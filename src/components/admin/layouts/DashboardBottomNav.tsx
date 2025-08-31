@@ -1,30 +1,21 @@
-import { 
-  Home, 
-  MessageSquare, 
-  User, 
-  Settings, 
-  FileText, 
-  GitGraph, 
-  Users 
-} from "lucide-react";
+import { Home, Users, GitGraph, BarChart2, Shield, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation, Link } from "react-router-dom";
 
 const bottomNavItems = [
-  { title: "Feed", icon: Home, href: "/feed" },
-  { title: "Topics", icon: GitGraph, href: "/topics" },
-  { title: "Articles", icon: FileText, href: "/articles" },
-  { title: "Connect", icon: Users, href: "/explore" },
-  { title: "Messages", icon: MessageSquare, href: "/messages" },
-  { title: "Profile", icon: User, href: "/profile" },
-  { title: "Settings", icon: Settings, href: "/settings" },
+  { title: "Dashboard", icon: Home, href: "/admin/dashboard" },
+  { title: "Users", icon: Users, href: "/admin/users" },
+  { title: "Groups", icon: GitGraph, href: "/admin/groups" },
+  { title: "Analytics", icon: BarChart2, href: "/admin/analytics" },
+  { title: "Moderation", icon: Shield, href: "/admin/moderation" },
+  { title: "Settings", icon: Settings, href: "/admin/settings" },
 ];
 
-export const BottomNav = () => {
+export const DashboardBottomNav = ({ className }: { className?: string }) => {
   const location = useLocation();
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t md:hidden">
+    <div className={cn("fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t md:hidden", className)}>
       <nav className="flex items-center h-16 px-2 overflow-x-auto no-scrollbar">
         {bottomNavItems.map((item) => {
           const isActive = location.pathname === item.href;
@@ -42,7 +33,6 @@ export const BottomNav = () => {
               )}
             >
               <Icon className="h-5 w-5" />
-              {/* hide labels on very small screens */}
               <span className="text-xs font-medium truncate hidden xs:block">
                 {item.title}
               </span>

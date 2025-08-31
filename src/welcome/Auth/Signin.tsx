@@ -23,11 +23,7 @@ const Signin = () => {
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-        {/* Back to Landing */}
-        <Link to="/" className="inline-flex items-center text-white hover:text-white/80 mb-6 transition-colors">
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Home
-        </Link>
+       
 
         <Card className="shadow-strong">
           <CardHeader className="space-y-1 text-center">
@@ -155,6 +151,12 @@ const Signin = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Back to Landing */}
+        <Link to="/" className="inline-flex items-center dark:text-white text-yellow-400 hover:text-primary mb-6 transition-colors">
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Home
+        </Link>
       </div>
     </div>
   );

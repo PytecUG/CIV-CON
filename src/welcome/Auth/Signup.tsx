@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,12 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Link } from "react-router-dom";
-import { ArrowRight, ArrowLeft, CheckCircle, Camera } from "lucide-react";
-
-// Import ug-locale
-const UgaLocale = require("ug-locale")();
+import { ArrowRight, ArrowLeft, CheckCircle, Star, Users, MapPin, Camera } from "lucide-react";
 
 const Signup = () => {
   const [currentStep, setCurrentStep] = useState(1);
@@ -22,172 +20,55 @@ const Signup = () => {
     email: "",
     password: "",
     confirmPassword: "",
+    
     // Step 2: Location & Interests
     region: "",
     district: "",
-    county: "",
-    subCounty: "",
-    parish: "",
-    village: "",
     interests: [] as string[],
     occupation: "",
+    
     // Step 3: Profile Setup
     bio: "",
     profileImage: null as File | null,
     politicalInterest: "",
     communityRole: "",
+    
     // Step 4: Preferences
     notifications: {
       email: true,
       sms: false,
-      push: true,
+      push: true
     },
     privacyLevel: "public",
-    agreeToTerms: false,
+    agreeToTerms: false
   });
-
-  // State for dynamic dropdown options
-  const [districts, setDistricts] = useState<any[]>([]);
-  const [counties, setCounties] = useState<any[]>([]);
-  const [subCounties, setSubCounties] = useState<any[]>([]);
-  const [parishes, setParishes] = useState<any[]>([]);
-  const [villages, setVillages] = useState<any[]>([]);
 
   const totalSteps = 4;
   const progress = (currentStep / totalSteps) * 100;
 
-  // Static regions (since ug-locale likely doesn't provide regions)
   const ugandaRegions = [
-    "Central Region",
-    "Eastern Region",
-    "Northern Region",
-    "Western Region",
+    "Central Region", "Eastern Region", "Northern Region", "Western Region"
   ];
 
   const interestOptions = [
-    "Politics", "Education", "Healthcare", "Environment", "Technology",
-    "Business", "Agriculture", "Youth Development", "Women's Rights",
-    "Infrastructure", "Tourism", "Sports",
+    "Politics", "Education", "Healthcare", "Environment", "Technology", 
+    "Business", "Agriculture", "Youth Development", "Women's Rights", 
+    "Infrastructure", "Tourism", "Sports"
   ];
 
-  // Fetch districts when region changes
-  useEffect(() => {
-    if (formData.region) {
-      try {
-        const allDistricts = UgaLocale.districts();
-        // Filter districts by region (if ug-locale supports region filtering)
-        // This is a placeholder; adjust based on actual ug-locale API
-        setDistricts(allDistricts);
-        // Reset dependent fields
-        setFormData((prev) => ({
-          ...prev,
-          district: "",
-          county: "",
-          subCounty: "",
-          parish: "",
-          village: "",
-        }));
-        setCounties([]);
-        setSubCounties([]);
-        setParishes([]);
-        setVillages([]);
-      } catch (error) {
-        console.error("Error fetching districts:", error);
-        setDistricts([]);
-      }
-    }
-  }, [formData.region]);
-
-  // Fetch counties when district changes
-  useEffect(() => {
-    if (formData.district) {
-      try {
-        const districtCounties = UgaLocale.counties(formData.district);
-        setCounties(districtCounties || []);
-        setFormData((prev) => ({
-          ...prev,
-          county: "",
-          subCounty: "",
-          parish: "",
-          village: "",
-        }));
-        setSubCounties([]);
-        setParishes([]);
-        setVillages([]);
-      } catch (error) {
-        console.error("Error fetching counties:", error);
-        setCounties([]);
-      }
-    }
-  }, [formData.district]);
-
-  // Fetch sub-counties when county changes
-  useEffect(() => {
-    if (formData.county) {
-      try {
-        const countySubCounties = UgaLocale.subCounties(formData.county);
-        setSubCounties(countySubCounties || []);
-        setFormData((prev) => ({
-          ...prev,
-          subCounty: "",
-          parish: "",
-          village: "",
-        }));
-        setParishes([]);
-        setVillages([]);
-      } catch (error) {
-        console.error("Error fetching sub-counties:", error);
-        setSubCounties([]);
-      }
-    }
-  }, [formData.county]);
-
-  // Fetch parishes when sub-county changes
-  useEffect(() => {
-    if (formData.subCounty) {
-      try {
-        const subCountyParishes = UgaLocale.parishes(formData.subCounty);
-        setParishes(subCountyParishes || []);
-        setFormData((prev) => ({
-          ...prev,
-          parish: "",
-          village: "",
-        }));
-        setVillages([]);
-      } catch (error) {
-        console.error("Error fetching parishes:", error);
-        setParishes([]);
-      }
-    }
-  }, [formData.subCounty]);
-
-  // Fetch villages when parish changes
-  useEffect(() => {
-    if (formData.parish) {
-      try {
-        const parishVillages = UgaLocale.villages(formData.parish);
-        setVillages(parishVillages || []);
-        setFormData((prev) => ({ ...prev, village: "" }));
-      } catch (error) {
-        console.error("Error fetching villages:", error);
-        setVillages([]);
-      }
-    }
-  }, [formData.parish]);
-
   const handleInputChange = (field: string, value: any) => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
-      [field]: value,
+      [field]: value
     }));
   };
 
   const handleInterestToggle = (interest: string) => {
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       interests: prev.interests.includes(interest)
-        ? prev.interests.filter((i) => i !== interest)
-        : [...prev.interests, interest],
+        ? prev.interests.filter(i => i !== interest)
+        : [...prev.interests, interest]
     }));
   };
 
@@ -266,7 +147,7 @@ const Signup = () => {
                     />
                   </div>
                 </div>
-
+                
                 <div>
                   <Label htmlFor="email">Email Address</Label>
                   <Input
@@ -332,99 +213,46 @@ const Signup = () => {
                       </SelectContent>
                     </Select>
                   </div>
-
+                  
                   <div>
-                    <Label htmlFor="district">District</Label>
-                    <Select
+                  <Label htmlFor="region">District</Label>
+                  <Select value={formData.region} onValueChange={(value) => handleInputChange("region", value)}>
+                    <SelectTrigger className="mt-1">
+                      <SelectValue placeholder="Select your District" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ugandaRegions.map((region) => (
+                        <SelectItem key={region} value={region}>{region}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="region">Sub-County</Label>
+                    <Select value={formData.region} onValueChange={(value) => handleInputChange("region", value)}>
+                      <SelectTrigger className="mt-1">
+                        <SelectValue placeholder="Select your Subcounty" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ugandaRegions.map((region) => (
+                          <SelectItem key={region} value={region}>{region}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="district">Address</Label>
+                    <Input
+                      id="district"
                       value={formData.district}
-                      onValueChange={(value) => handleInputChange("district", value)}
-                      disabled={!formData.region || districts.length === 0}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder={districts.length === 0 ? "No districts available" : "Select your district"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {districts.map((district) => (
-                          <SelectItem key={district.id} value={district.id}>{district.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="county">County</Label>
-                    <Select
-                      value={formData.county}
-                      onValueChange={(value) => handleInputChange("county", value)}
-                      disabled={!formData.district || counties.length === 0}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder={counties.length === 0 ? "No counties available" : "Select your county"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {counties.map((county) => (
-                          <SelectItem key={county.id} value={county.id}>{county.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="subCounty">Sub-County</Label>
-                    <Select
-                      value={formData.subCounty}
-                      onValueChange={(value) => handleInputChange("subCounty", value)}
-                      disabled={!formData.county || subCounties.length === 0}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder={subCounties.length === 0 ? "No sub-counties available" : "Select your sub-county"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {subCounties.map((subCounty) => (
-                          <SelectItem key={subCounty.id} value={subCounty.id}>{subCounty.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="parish">Parish (Optional)</Label>
-                    <Select
-                      value={formData.parish}
-                      onValueChange={(value) => handleInputChange("parish", value)}
-                      disabled={!formData.subCounty || parishes.length === 0}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder={parishes.length === 0 ? "No parishes available" : "Select your parish"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {parishes.map((parish) => (
-                          <SelectItem key={parish.id} value={parish.id}>{parish.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="village">Village (Optional)</Label>
-                    <Select
-                      value={formData.village}
-                      onValueChange={(value) => handleInputChange("village", value)}
-                      disabled={!formData.parish || villages.length === 0}
-                    >
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder={villages.length === 0 ? "No villages available" : "Select your village"} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {villages.map((village) => (
-                          <SelectItem key={village.id} value={village.id}>{village.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      onChange={(e) => handleInputChange("district", e.target.value)}
+                      placeholder="Enter your district"
+                      className="mt-1"
+                    />
                   </div>
                 </div>
 
@@ -528,31 +356,31 @@ const Signup = () => {
                   <Label className="text-base font-medium">Notification Preferences</Label>
                   <div className="space-y-3 mt-3">
                     <div className="flex items-center space-x-2">
-                      <Checkbox
+                      <Checkbox 
                         id="email-notifications"
                         checked={formData.notifications.email}
-                        onCheckedChange={(checked) =>
-                          handleInputChange("notifications", { ...formData.notifications, email: checked })
+                        onCheckedChange={(checked) => 
+                          handleInputChange("notifications", {...formData.notifications, email: checked})
                         }
                       />
                       <Label htmlFor="email-notifications" className="text-sm">Email notifications for important updates</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Checkbox
+                      <Checkbox 
                         id="sms-notifications"
                         checked={formData.notifications.sms}
-                        onCheckedChange={(checked) =>
-                          handleInputChange("notifications", { ...formData.notifications, sms: checked })
+                        onCheckedChange={(checked) => 
+                          handleInputChange("notifications", {...formData.notifications, sms: checked})
                         }
                       />
                       <Label htmlFor="sms-notifications" className="text-sm">SMS alerts for urgent matters</Label>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Checkbox
+                      <Checkbox 
                         id="push-notifications"
                         checked={formData.notifications.push}
-                        onCheckedChange={(checked) =>
-                          handleInputChange("notifications", { ...formData.notifications, push: checked })
+                        onCheckedChange={(checked) => 
+                          handleInputChange("notifications", {...formData.notifications, push: checked})
                         }
                       />
                       <Label htmlFor="push-notifications" className="text-sm">Push notifications for discussions</Label>
@@ -576,7 +404,7 @@ const Signup = () => {
 
                 <div className="bg-accent/10 p-4 rounded-lg">
                   <div className="flex items-start space-x-2">
-                    <Checkbox
+                    <Checkbox 
                       id="terms"
                       checked={formData.agreeToTerms}
                       onCheckedChange={(checked) => handleInputChange("agreeToTerms", checked)}
@@ -624,8 +452,8 @@ const Signup = () => {
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               ) : (
-                <Button
-                  onClick={handleSubmit}
+                <Button 
+                  onClick={handleSubmit} 
                   disabled={!formData.agreeToTerms}
                   className="bg-gradient-primary hover:opacity-90"
                 >

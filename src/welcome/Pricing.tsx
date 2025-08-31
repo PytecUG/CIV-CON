@@ -10,12 +10,30 @@ const Pricing = () => {
   const [monthly, setMonthly] = useState(false);
 
   return (
-    <section id="pricing" className="py-24 px-6">
+    <section id="pricing" className="relative py-24 px-6 overflow-hidden">
       <Element name="pricing">
-        <div className="container">
+        <div className="container relative">
+          {/* Background Layer */}
+          <div className="absolute inset-0 -z-10 flex justify-center">
+            <img
+              src="/images/bg-outlines.svg"
+              width={960}
+              height={380}
+              alt="outline"
+              className="opacity-20"
+            />
+            <img
+              src="/images/bg-outlines-fill.png"
+              width={960}
+              height={380}
+              alt="outline"
+              className="absolute inset-0 opacity-10 mix-blend-soft-light"
+            />
+          </div>
+
           {/* Heading + Toggle */}
-          <div className="max-w-4xl relative mx-auto border-l border-r border-border bg-card pb-40 pt-28 max-lg:border-none max-md:pb-32 max-md:pt-16 animate-fade-in">
-            <h3 className="text-3xl font-bold max-w-lg mx-auto mb-14 text-center text-primary max-lg:text-2xl max-md:mb-11 max-sm:max-w-sm">
+          <div className="max-w-4xl mx-auto relative z-10 text-center">
+            <h3 className="text-3xl font-bold max-w-lg mx-auto mb-14 text-primary max-lg:text-2xl max-md:mb-11 max-sm:max-w-sm">
               Flexible pricing for every role
             </h3>
 
@@ -24,7 +42,9 @@ const Pricing = () => {
               <button
                 className={clsx(
                   "flex-1 py-2 rounded-sm transition-colors",
-                  monthly ? "text-primary font-semibold" : "text-muted-foreground"
+                  monthly
+                    ? "text-primary font-semibold"
+                    : "text-muted-foreground"
                 )}
                 onClick={() => setMonthly(true)}
               >
@@ -33,7 +53,9 @@ const Pricing = () => {
               <button
                 className={clsx(
                   "flex-1 py-2 rounded-sm transition-colors",
-                  !monthly ? "text-primary font-semibold" : "text-muted-foreground"
+                  !monthly
+                    ? "text-primary font-semibold"
+                    : "text-muted-foreground"
                 )}
                 onClick={() => setMonthly(false)}
               >
@@ -51,7 +73,7 @@ const Pricing = () => {
           </div>
 
           {/* Pricing Cards */}
-          <div className="scroll-hide relative -mt-12 flex items-start max-xl:gap-5 max-xl:overflow-auto max-xl:pt-6">
+          <div className="scroll-hide relative mt-20 flex items-start max-xl:gap-5 max-xl:overflow-auto max-xl:pt-6">
             {plans.map((plan, index) => {
               const Icon = plan.icon;
 
@@ -62,7 +84,7 @@ const Pricing = () => {
                 >
                   {/* Highlight Background for Middle Plan */}
                   {index === 1 && (
-                    <div className="absolute inset-x-0 top-0 h-80 bg-gradient-subtle rounded-t-md" />
+                    <div className="absolute inset-x-0 top-0 h-80 bg-gradient-primary rounded-t-md" />
                   )}
 
                   {/* Icon */}
@@ -75,7 +97,9 @@ const Pricing = () => {
                     <Icon
                       className={clsx(
                         "drop-shadow-lg",
-                        index === 1 ? "text-accent size-[120px]" : "text-primary size-[88px]"
+                        index === 1
+                          ? "text-accent size-[120px]"
+                          : "text-primary size-[88px]"
                       )}
                     />
                   </div>
@@ -103,16 +127,21 @@ const Pricing = () => {
                       <div
                         className={clsx(
                           "text-4xl font-bold",
-                          index === 1 ? "text-accent-foreground" : "text-primary"
+                          index === 1
+                            ? "text-accent-foreground"
+                            : "text-primary"
                         )}
                       >
                         {plan.priceMonthly === 0 ? (
                           "Free"
                         ) : (
                           <>
-                            $<CountUp
+                            Ugx
+                            <CountUp
                               start={plan.priceMonthly}
-                              end={monthly ? plan.priceMonthly : plan.priceYearly}
+                              end={
+                                monthly ? plan.priceMonthly : plan.priceYearly
+                              }
                               duration={0.4}
                               useEasing={false}
                               preserveValue

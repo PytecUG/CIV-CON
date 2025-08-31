@@ -18,11 +18,18 @@ import DiscussionRoom from "./pages/DiscussionRoom";
 import Events from "./pages/Events";
 import LiveDiscussion from "./pages/LiveDiscussion";
 import JoinDiscussions from "./pages/JoinDiscussions";
-import Home from "./welcome/Home"
+import Home from "./welcome/Home";
 import Signup from "./welcome/Auth/Signup";
 import Signin from "./welcome/Auth/Signin";
 import NotFound from "./pages/NotFound";
-
+// Admin routes
+import { DashboardLayout } from "@/components/admin/layouts/DashboardLayout";
+import { Users } from "@/components/admin/pages/Users";
+import { AdminGroups } from "@/components/admin/pages/Groups";
+import { Analytics } from "@/components/admin/pages/Analytics";
+import { Dashboard } from "@/components/admin/pages/Dashboard";
+import { Moderation } from "@/components/admin/pages/Moderation";
+import { AdminSettings } from "@/components/admin/pages/Settings";
 
 const queryClient = new QueryClient();
 
@@ -34,24 +41,35 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
+            {/* Non-Admin Routes */}
             <Route path="/" element={<Home />} />
+            <Route path="/home" element={<Home />} />
             <Route path="/feed" element={<Feed />} />
             <Route path="/topics" element={<Topics />} />
             <Route path="/articles" element={<Articles />} />
             <Route path="/explore" element={<Explore />} />
             <Route path="/groups" element={<Groups />} />
-            <Route path="/People" element={<People />} />
+            <Route path="/people" element={<People />} />
             <Route path="/notifications" element={<Notifications />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/post/:id" element={<PostDetail />} />
-            <Route path="/home" element={<Home />} />
             <Route path="/discussion/:topicId" element={<DiscussionRoom />} />
             <Route path="/events" element={<Events />} />
             <Route path="/live-discussion/:id" element={<LiveDiscussion />} />
             <Route path="/join-discussions" element={<JoinDiscussions />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/signin" element={<Signin />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            {/* Admin Routes */}
+            <Route path="/admin" element={<DashboardLayout />}>
+              <Route index element={<Dashboard />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="users" element={<Users />} />
+              <Route path="groups" element={<AdminGroups />} />
+              <Route path="analytics" element={<Analytics />} />
+              <Route path="moderation" element={<Moderation />} />
+              <Route path="settings" element={<AdminSettings />} />
+            </Route>
+            {/* Catch-all Route */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

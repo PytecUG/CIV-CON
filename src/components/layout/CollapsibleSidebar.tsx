@@ -1,24 +1,22 @@
+import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
-import { 
-  Home, 
-  FileText, 
-  Hash, 
-  Compass, 
-  UserPlus,
-  Bell, 
-  Settings,
-  ChevronRight,
-  X,
-  User,
+import {
+  Home,
+  FileText,
   GitGraph,
   Users,
-  Plus,
-  Video,
+  UserPlus,
+  Settings,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  Video,
+  Compass,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { CreatePost } from "@/components/forms/CreatePost";
 import { cn } from "@/lib/utils";
 
 const sidebarItems = [
@@ -26,26 +24,46 @@ const sidebarItems = [
   { title: "Articles", icon: FileText, href: "/articles" },
   { title: "Topics", icon: GitGraph, href: "/topics" },
   { title: "Groups", icon: Users, href: "/groups" },
-  { title: "Post", icon: Compass, href: "/post" },
-  { title: "Connect", icon: UserPlus, href: "/People"},
+  { title: "Post", icon: Compass }, // No href, uses Dialog
+  { title: "Connect", icon: UserPlus, href: "/People" },
   { title: "Live Discussion", icon: Video, href: "/join-discussions" },
   { title: "Settings", icon: Settings, href: "/settings" },
 ];
 
 interface CollapsibleSidebarProps {
-  isOpen: boolean;
-  onToggle: () => void;
+  isOpen?: boolean;
+  onToggle?: () => void;
   className?: string;
 }
 
-export const CollapsibleSidebar = ({ isOpen, onToggle, className }: CollapsibleSidebarProps) => {
+export const CollapsibleSidebar = ({ isOpen: controlledIsOpen, onToggle, className }: CollapsibleSidebarProps) => {
   const location = useLocation();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(() => {
+    // Initialize from localStorage, default to true if not set
+    const savedState = localStorage.getItem("sidebarIsOpen");
+    return savedState !== null ? JSON.parse(savedState) : true;
+  });
+
+  // Update localStorage when isOpen changes
+  useEffect(() => {
+    localStorage.setItem("sidebarIsOpen", JSON.stringify(isOpen));
+  }, [isOpen]);
+
+  // Handle toggle, respecting controlled prop if provided
+  const handleToggle = () => {
+    setIsOpen((prev) => !prev);
+    if (onToggle) onToggle();
+  };
+
+  // Use controlledIsOpen if provided, else use internal state
+  const isSidebarOpen = controlledIsOpen !== undefined ? controlledIsOpen : isOpen;
 
   return (
-    <div 
+    <div
       className={cn(
         "flex flex-col h-[calc(100vh-4rem)] bg-background border-r border-border transition-all duration-300 ease-in-out z-30",
-        isOpen ? "w-64" : "w-16",
+        isSidebarOpen ? "w-64" : "w-16",
         className
       )}
     >
@@ -54,56 +72,79 @@ export const CollapsibleSidebar = ({ isOpen, onToggle, className }: CollapsibleS
         <Button
           variant="ghost"
           size="icon"
-          onClick={onToggle}
-          className="h-8 w-8 hover:bg-accent transition-colors"
+          onClick={handleToggle}
+          className="h-8 w-8 hover:bg-accent rounded-md transition-colors"
         >
-          {isOpen ? <ChevronsLeft className="h-4 w-4" /> : <ChevronsRight className="h-4 w-4" />}
+          {isSidebarOpen ? <ChevronsLeft className="h-4 w-4" /> : <ChevronsRight className="h-4 w-4" />}
         </Button>
       </div>
 
       {/* Navigation Items */}
-      <nav className="p-2 space-y-1 flex-1">
+      <nav className="p-2 xs:p-3 space-y-1.5 flex-1">
         {sidebarItems.map((item) => {
           const Icon = item.icon;
-          const isActive = location.pathname === item.href;
-          
+          const isActive = item.href ? location.pathname === item.href : isModalOpen;
+
+          // Handle Post item with Dialog
+          if (item.title === "Post") {
+            return (
+              <Dialog key={item.title} open={isModalOpen} onOpenChange={setIsModalOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "flex items-center justify-start p-3 w-full h-10 rounded-lg transition-all duration-200 group text-sm font-medium",
+                      isModalOpen
+                        ? "bg-primary text-primary-foreground shadow-md"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                      !isSidebarOpen && "justify-center"
+                    )}
+                  >
+                    <Icon className="h-5 w-5 flex-shrink-0" />
+                    {isSidebarOpen && (
+                      <span className="ml-3 truncate">
+                        {item.title}
+                      </span>
+                    )}
+                    {!isSidebarOpen && (
+                      <div className="absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded-md shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+                        {item.title}
+                      </div>
+                    )}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-[90vw] xs:max-w-[400px] sm:max-w-[500px] md:max-w-[650px] lg:max-w-[800px] p-3 xs:p-4 sm:p-5">
+                  <DialogHeader>
+                    <DialogTitle className="text-sm xs:text-base sm:text-lg md:text-xl text-primary">
+                      Create a New Post
+                    </DialogTitle>
+                  </DialogHeader>
+                  <CreatePost />
+                </DialogContent>
+              </Dialog>
+            );
+          }
+
+          // Other navigation items
           return (
             <NavLink
               key={item.href}
               to={item.href}
-              className={({ isActive }) =>
-                cn(
-                  "flex items-center space-x-3 p-3 rounded-lg transition-all duration-200 group relative",
-                  isActive
-                    ? "bg-primary text-primary-foreground shadow-md"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent",
-                  !isOpen && "justify-center"
-                )
-              }
+              className={cn(
+                "flex items-center justify-start p-3 w-full h-10 rounded-lg transition-all duration-200 group text-sm font-medium",
+                isActive
+                  ? "bg-primary text-primary-foreground shadow-md"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent",
+                !isSidebarOpen && "justify-center"
+              )}
             >
-              <div className="relative flex items-center">
-                <Icon className="h-5 w-5 flex-shrink-0" />
-                {item.badge && (
-                  <Badge 
-                    variant="destructive" 
-                    className={cn(
-                      "absolute -top-2 -right-2 h-5 w-5 p-0 text-xs flex items-center justify-center",
-                      !isOpen ? "scale-75" : ""
-                    )}
-                  >
-                    {item.badge}
-                  </Badge>
-                )}
-              </div>
-
-              {isOpen && (
-                <span className="font-medium transition-opacity duration-200">
+              <Icon className="h-5 w-5 flex-shrink-0" />
+              {isSidebarOpen && (
+                <span className="ml-3 truncate">
                   {item.title}
                 </span>
               )}
-
-              {/* Tooltip for collapsed state */}
-              {!isOpen && (
+              {!isSidebarOpen && (
                 <div className="absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded-md shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
                   {item.title}
                   {item.badge && (
@@ -118,32 +159,31 @@ export const CollapsibleSidebar = ({ isOpen, onToggle, className }: CollapsibleS
         })}
       </nav>
 
-      {/* Trending Section */}
-      {isOpen && (
-        <div className="mt-6 px-4">
-          <div className="border-t pt-4">
-            <h3 className="text-sm font-semibold text-muted-foreground mb-3">
-              Trending Now
-            </h3>
-            <div className="space-y-2">
-              {[
-                "#EducationReform",
-                "#YouthEmployment", 
-                "#Infrastructure",
-                "#DigitalInnovation"
-              ].map((trend, index) => (
-                <a
-                  key={index}
-                  href="#"
-                  className="block text-sm text-muted-foreground hover:text-primary transition-colors py-1"
-                >
-                  {trend}
-                </a>
-              ))}
+      {/* Logout Button */}
+      <div className="p-2 xs:p-3 border-t">
+        <NavLink
+          to="/"
+          className={cn(
+            "flex items-center justify-start p-3 w-full h-10 rounded-lg transition-all duration-200 group text-sm font-medium",
+            location.pathname === "/"
+              ? "bg-primary text-primary-foreground shadow-md"
+              : "text-muted-foreground hover:text-foreground hover:bg-accent",
+            !isSidebarOpen && "justify-center"
+          )}
+        >
+          <LogOut className="h-5 w-5 flex-shrink-0" />
+          {isSidebarOpen && (
+            <span className="ml-3 truncate">
+              Log Out
+            </span>
+          )}
+          {!isSidebarOpen && (
+            <div className="absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded-md shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
+              Log Out
             </div>
-          </div>
-        </div>
-      )}
+          )}
+        </NavLink>
+      </div>
     </div>
   );
 };
