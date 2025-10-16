@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Users, Ban, Edit, Eye } from "lucide-react";
+import { Users as UsersIcon, Ban, Edit, Eye } from "lucide-react";
+
+
 import { Button } from "@/components/ui/button";
 import {
   Table,
