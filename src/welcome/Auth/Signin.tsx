@@ -183,15 +183,7 @@ const Signin = () => {
           </div>
         </CardContent>
       </Card>
-
-      {/* Back to Landing */}
-      <Link
-        to="/"
-        className="inline-flex items-center text-yellow-400 hover:text-primary mt-6 transition-colors text-sm sm:text-base justify-center w-full"
-      >
-        <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
-        Back to Home
-      </Link>
+ 
     </div>
   );
 };
