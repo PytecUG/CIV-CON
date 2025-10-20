@@ -24,22 +24,26 @@ const sidebarItems = [
 
 interface DashboardCollapsibleSidebarProps {
   className?: string;
+  onToggle?: (isOpen: boolean) => void; // 🔹 new prop to notify parent
 }
 
-export const DashboardCollapsibleSidebar = ({ className }: DashboardCollapsibleSidebarProps) => {
+export const DashboardCollapsibleSidebar = ({
+  className,
+  onToggle,
+}: DashboardCollapsibleSidebarProps) => {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(() => {
     const savedState = localStorage.getItem("sidebarIsOpen");
     return savedState !== null ? JSON.parse(savedState) : true;
   });
 
+  // 🔹 Sync sidebar state with localStorage + notify parent
   useEffect(() => {
     localStorage.setItem("sidebarIsOpen", JSON.stringify(isOpen));
-  }, [isOpen]);
+    onToggle?.(isOpen);
+  }, [isOpen, onToggle]);
 
-  const handleToggle = () => {
-    setIsOpen((prev) => !prev);
-  };
+  const handleToggle = () => setIsOpen((prev) => !prev);
 
   return (
     <div
@@ -57,7 +61,11 @@ export const DashboardCollapsibleSidebar = ({ className }: DashboardCollapsibleS
           onClick={handleToggle}
           className="h-8 w-8 hover:bg-accent rounded-md transition-colors"
         >
-          {isOpen ? <ChevronsLeft className="h-4 w-4" /> : <ChevronsRight className="h-4 w-4" />}
+          {isOpen ? (
+            <ChevronsLeft className="h-4 w-4" />
+          ) : (
+            <ChevronsRight className="h-4 w-4" />
+          )}
         </Button>
       </div>
 
@@ -80,11 +88,9 @@ export const DashboardCollapsibleSidebar = ({ className }: DashboardCollapsibleS
               )}
             >
               <Icon className="h-5 w-5 flex-shrink-0" />
-              {isOpen && (
-                <span className="ml-3 truncate">
-                  {item.title}
-                </span>
-              )}
+              {isOpen && <span className="ml-3 truncate">{item.title}</span>}
+
+              {/* Tooltip when collapsed */}
               {!isOpen && (
                 <div className="absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded-md shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
                   {item.title}
