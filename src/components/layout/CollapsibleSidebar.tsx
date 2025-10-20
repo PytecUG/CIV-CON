@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Home,
@@ -15,7 +15,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { CreatePost } from "@/components/forms/CreatePost";
 import { cn } from "@/lib/utils";
 
@@ -31,39 +37,20 @@ const sidebarItems = [
 ];
 
 interface CollapsibleSidebarProps {
-  isOpen?: boolean;
-  onToggle?: () => void;
+  isOpen: boolean; // required controlled prop
+  onToggle: () => void;
   className?: string;
 }
 
-export const CollapsibleSidebar = ({ isOpen: controlledIsOpen, onToggle, className }: CollapsibleSidebarProps) => {
+export const CollapsibleSidebar = ({ isOpen, onToggle, className }: CollapsibleSidebarProps) => {
   const location = useLocation();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isOpen, setIsOpen] = useState(() => {
-    // Initialize from localStorage, default to true if not set
-    const savedState = localStorage.getItem("sidebarIsOpen");
-    return savedState !== null ? JSON.parse(savedState) : true;
-  });
-
-  // Update localStorage when isOpen changes
-  useEffect(() => {
-    localStorage.setItem("sidebarIsOpen", JSON.stringify(isOpen));
-  }, [isOpen]);
-
-  // Handle toggle, respecting controlled prop if provided
-  const handleToggle = () => {
-    setIsOpen((prev) => !prev);
-    if (onToggle) onToggle();
-  };
-
-  // Use controlledIsOpen if provided, else use internal state
-  const isSidebarOpen = controlledIsOpen !== undefined ? controlledIsOpen : isOpen;
 
   return (
     <div
       className={cn(
         "flex flex-col h-[calc(100vh-4rem)] bg-background border-r border-border transition-all duration-300 ease-in-out z-30",
-        isSidebarOpen ? "w-64" : "w-16",
+        isOpen ? "w-64" : "w-16",
         className
       )}
     >
@@ -72,10 +59,10 @@ export const CollapsibleSidebar = ({ isOpen: controlledIsOpen, onToggle, classNa
         <Button
           variant="ghost"
           size="icon"
-          onClick={handleToggle}
+          onClick={onToggle}
           className="h-8 w-8 hover:bg-accent rounded-md transition-colors"
         >
-          {isSidebarOpen ? <ChevronsLeft className="h-4 w-4" /> : <ChevronsRight className="h-4 w-4" />}
+          {isOpen ? <ChevronsLeft className="h-4 w-4" /> : <ChevronsRight className="h-4 w-4" />}
         </Button>
       </div>
 
@@ -85,7 +72,6 @@ export const CollapsibleSidebar = ({ isOpen: controlledIsOpen, onToggle, classNa
           const Icon = item.icon;
           const isActive = item.href ? location.pathname === item.href : isModalOpen;
 
-          // Handle Post item with Dialog
           if (item.title === "Post") {
             return (
               <Dialog key={item.title} open={isModalOpen} onOpenChange={setIsModalOpen}>
@@ -97,22 +83,19 @@ export const CollapsibleSidebar = ({ isOpen: controlledIsOpen, onToggle, classNa
                       isModalOpen
                         ? "bg-primary text-primary-foreground shadow-md"
                         : "text-muted-foreground hover:text-foreground hover:bg-accent",
-                      !isSidebarOpen && "justify-center"
+                      !isOpen && "justify-center"
                     )}
                   >
                     <Icon className="h-5 w-5 flex-shrink-0" />
-                    {isSidebarOpen && (
-                      <span className="ml-3 truncate">
-                        {item.title}
-                      </span>
-                    )}
-                    {!isSidebarOpen && (
+                    {isOpen && <span className="ml-3 truncate">{item.title}</span>}
+                    {!isOpen && (
                       <div className="absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded-md shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
                         {item.title}
                       </div>
                     )}
                   </Button>
                 </DialogTrigger>
+
                 <DialogContent className="max-w-[90vw] xs:max-w-[400px] sm:max-w-[500px] md:max-w-[650px] lg:max-w-[800px] p-3 xs:p-4 sm:p-5">
                   <DialogHeader>
                     <DialogTitle className="text-sm xs:text-base sm:text-lg md:text-xl text-primary">
@@ -125,7 +108,6 @@ export const CollapsibleSidebar = ({ isOpen: controlledIsOpen, onToggle, classNa
             );
           }
 
-          // Other navigation items
           return (
             <NavLink
               key={item.href}
@@ -135,16 +117,12 @@ export const CollapsibleSidebar = ({ isOpen: controlledIsOpen, onToggle, classNa
                 isActive
                   ? "bg-primary text-primary-foreground shadow-md"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent",
-                !isSidebarOpen && "justify-center"
+                !isOpen && "justify-center"
               )}
             >
               <Icon className="h-5 w-5 flex-shrink-0" />
-              {isSidebarOpen && (
-                <span className="ml-3 truncate">
-                  {item.title}
-                </span>
-              )}
-              {!isSidebarOpen && (
+              {isOpen && <span className="ml-3 truncate">{item.title}</span>}
+              {!isOpen && (
                 <div className="absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded-md shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
                   {item.title}
                   {item.badge && (
@@ -168,16 +146,12 @@ export const CollapsibleSidebar = ({ isOpen: controlledIsOpen, onToggle, classNa
             location.pathname === "/"
               ? "bg-primary text-primary-foreground shadow-md"
               : "text-muted-foreground hover:text-foreground hover:bg-accent",
-            !isSidebarOpen && "justify-center"
+            !isOpen && "justify-center"
           )}
         >
           <LogOut className="h-5 w-5 flex-shrink-0" />
-          {isSidebarOpen && (
-            <span className="ml-3 truncate">
-              Log Out
-            </span>
-          )}
-          {!isSidebarOpen && (
+          {isOpen && <span className="ml-3 truncate">Log Out</span>}
+          {!isOpen && (
             <div className="absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded-md shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
               Log Out
             </div>
