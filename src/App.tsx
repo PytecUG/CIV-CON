@@ -22,6 +22,8 @@ import Home from "./welcome/Home";
 import Signup from "./welcome/Auth/Signup";
 import Signin from "./welcome/Auth/Signin";
 import NotFound from "./pages/NotFound";
+import ForgotPassword from "./welcome/Auth/ForgotPassword";
+import ResetPassword from "./welcome/Auth/ResetPassword";
 // Admin routes
 import { DashboardLayout } from "@/components/admin/layouts/DashboardLayout";
 import { Users } from "@/components/admin/pages/Users";
@@ -59,6 +61,9 @@ const App = () => (
             <Route path="/join-discussions" element={<JoinDiscussions />} />
             <Route path="/signup" element={<Signup />} />
             <Route path="/signin" element={<Signin />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+
             {/* Admin Routes */}
             <Route path="/admin" element={<DashboardLayout />}>
               <Route index element={<Dashboard />} />

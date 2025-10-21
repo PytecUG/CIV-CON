@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
+import api from "@/api/client"; 
+
 import {
   Card,
   CardContent,
@@ -13,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, Mail, Lock } from "lucide-react";
 
+//
 const Signin = () => {
   const [formData, setFormData] = useState({
     email: "",
@@ -20,10 +24,46 @@ const Signin = () => {
     rememberMe: false,
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  //  Redirect logged-in users automatically
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      navigate("/feed"); // or "/home", whichever you prefer
+    }
+  }, [navigate]);
+
+  //  handleSubmit
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Signin form submitted:", formData);
+    setLoading(true);
+    setError(null);
+
+    try {
+      const form = new FormData();
+      form.append("username", formData.email);
+      form.append("password", formData.password);
+
+      const res = await api.post("/auth/login", form, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      const token = res.data.access_token;
+      if (!token) throw new Error("No token returned from API");
+
+      localStorage.setItem("token", token);
+      navigate("/feed");
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setError(err.response?.data?.detail || "Login failed");
+    } finally {
+      setLoading(false);
+    }
   };
+
 
   return (
     <div className="w-full max-w-md mx-auto px-4 sm:px-6 md:px-0">
@@ -111,13 +151,21 @@ const Signin = () => {
               </Link>
             </div>
 
+                  
+            {error && (
+            <p className="text-red-500 text-sm text-center">{error}</p>
+            )}
+
+
             {/* Submit Button */}
             <Button
               type="submit"
-              className="w-full shadow-soft text-sm sm:text-base py-2 sm:py-3"
-            >
-              Sign In
+              disabled={loading}
+                className="w-full shadow-soft text-sm sm:text-base py-2 sm:py-3"
+              >
+              {loading ? "Signing in..." : "Sign In"}
             </Button>
+
 
             {/* Sign Up Link */}
             <div className="text-center text-sm sm:text-base">

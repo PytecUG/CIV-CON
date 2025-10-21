@@ -1,92 +1,211 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Link } from "react-router-dom";
-import { ArrowRight, ArrowLeft, CheckCircle, Star, Users, MapPin, Camera } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Alert, AlertDescription } from "@/components/ui/alert"; // Assuming shadcn Alert
+import { ArrowRight, ArrowLeft, CheckCircle, Camera, AlertCircle } from "lucide-react";
 
 const Signup = () => {
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
+  const [districts, setDistricts] = useState<any[]>([]);
+  const [counties, setCounties] = useState<any[]>([]);
+  const [loadingDistricts, setLoadingDistricts] = useState(false);
+  const [loadingCounties, setLoadingCounties] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+
   const [formData, setFormData] = useState({
-    // Step 1: Basic Info
+    // Step 1
     firstName: "",
     lastName: "",
     email: "",
     password: "",
     confirmPassword: "",
-    
-    // Step 2: Location & Interests
+
+    // Step 2
     region: "",
     district: "",
-    interests: [] as string[],
+    county: "",
     occupation: "",
-    
-    // Step 3: Profile Setup
+    interests: [] as string[],
+
+    // Step 3
     bio: "",
     profileImage: null as File | null,
     politicalInterest: "",
     communityRole: "",
-    
-    // Step 4: Preferences
-    notifications: {
-      email: true,
-      sms: false,
-      push: true
-    },
+
+    // Step 4
+    notifications: { email: true, sms: false, push: true },
     privacyLevel: "public",
-    agreeToTerms: false
+    agreeToTerms: false,
   });
 
   const totalSteps = 4;
   const progress = (currentStep / totalSteps) * 100;
 
   const ugandaRegions = [
-    "Central Region", "Eastern Region", "Northern Region", "Western Region"
+    "Central Region",
+    "Eastern Region",
+    "Northern Region",
+    "Western Region",
   ];
 
   const interestOptions = [
-    "Politics", "Education", "Healthcare", "Environment", "Technology", 
-    "Business", "Agriculture", "Youth Development", "Women's Rights", 
-    "Infrastructure", "Tourism", "Sports"
+    "Politics",
+    "Education",
+    "Healthcare",
+    "Environment",
+    "Technology",
+    "Business",
+    "Agriculture",
+    "Youth Development",
+    "Women's Rights",
+    "Infrastructure",
+    "Tourism",
+    "Sports",
   ];
 
-  const handleInputChange = (field: string, value: any) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
+  // Fetch all districts on mount
+  useEffect(() => {
+    const fetchDistricts = async () => {
+      try {
+        setLoadingDistricts(true);
+        const response = await axios.get(
+          "https://civcon.onrender.com/auth/locations/districts"
+        );
+        setDistricts(response.data || []);
+      } catch (err) {
+        setError("Failed to load districts");
+      } finally {
+        setLoadingDistricts(false);
+      }
+    };
+    fetchDistricts();
+  }, []);
 
-  const handleInterestToggle = (interest: string) => {
-    setFormData(prev => ({
+  // Fetch counties when district changes
+  useEffect(() => {
+    if (!formData.district) {
+      setCounties([]); // Clear counties if no district
+      return;
+    }
+    const fetchCounties = async () => {
+      try {
+        setLoadingCounties(true);
+        const response = await axios.get(
+          `https://civcon.onrender.com/auth/locations/counties/${formData.district}`
+        );
+        setCounties(response.data || []);
+      } catch (err) {
+        setError("Failed to load counties");
+      } finally {
+        setLoadingCounties(false);
+      }
+    };
+    fetchCounties();
+  }, [formData.district]);
+
+  const handleInputChange = useCallback((field: string, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+
+    // Handle preview for profile image
+    if (field === "profileImage" && value) {
+      const reader = new FileReader();
+      reader.onloadend = () => setPreviewImage(reader.result as string);
+      reader.readAsDataURL(value);
+    }
+  }, []);
+
+  const handleInterestToggle = useCallback((interest: string) => {
+    setFormData((prev) => ({
       ...prev,
       interests: prev.interests.includes(interest)
-        ? prev.interests.filter(i => i !== interest)
-        : [...prev.interests, interest]
+        ? prev.interests.filter((i) => i !== interest)
+        : [...prev.interests, interest],
     }));
-  };
+  }, []);
 
-  const nextStep = () => {
-    if (currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1);
+  const nextStep = useCallback(() => {
+    // Basic validation (expand as needed)
+    if (currentStep === 1 && (!formData.email || !formData.password)) {
+      setError("Please fill in all fields");
+      return;
     }
-  };
+    if (currentStep < totalSteps) setCurrentStep(currentStep + 1);
+  }, [currentStep, formData.email, formData.password]);
 
-  const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
+  const prevStep = useCallback(() => {
+    if (currentStep > 1) setCurrentStep(currentStep - 1);
+  }, [currentStep]);
+
+  // Final submit to backend
+  const handleSubmit = async () => {
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match!");
+      return;
     }
-  };
 
-  const handleSubmit = () => {
-    console.log("Registration data:", formData);
-    // Handle registration logic here
+    if (!formData.agreeToTerms) {
+      setError("Please agree to the terms before continuing.");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = new FormData();
+      data.append("first_name", formData.firstName);
+      data.append("last_name", formData.lastName);
+      data.append("email", formData.email);
+      data.append("password", formData.password);
+      data.append("confirm_password", formData.confirmPassword);
+      data.append("region", formData.region || "");
+      data.append("district_id", formData.district || "");
+      data.append("county_id", formData.county || "");
+      data.append("occupation", formData.occupation || "");
+      data.append("bio", formData.bio || "");
+      data.append("political_interest", formData.politicalInterest || "");
+      data.append("community_role", formData.communityRole || "");
+      data.append("interests", JSON.stringify(formData.interests || []));
+      data.append("privacy_level", formData.privacyLevel);
+      data.append("notifications", JSON.stringify(formData.notifications));
+
+      if (formData.profileImage) {
+        data.append("profile_image", formData.profileImage);
+      }
+
+      await axios.post("https://civcon.onrender.com/auth/signup", data, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      // Silent redirect (no popup)
+      navigate("/signin", { replace: true });
+    } catch (err: any) {
+      console.error("Signup error:", err);
+      setError(
+        err.response?.data?.detail ||
+          "Signup failed. Please check your details and try again."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -99,18 +218,34 @@ const Signup = () => {
               <span className="text-white font-bold text-lg">CIV-CON</span>
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-gradient mb-2">Join Uganda Connects</h1>
-          <p className="text-muted-foreground">Connect with fellow citizens and shape Uganda's future</p>
+          <h1 className="text-3xl font-bold text-gradient mb-2">
+            Join Uganda Connects
+          </h1>
+          <p className="text-muted-foreground">
+            Connect with fellow citizens and shape Uganda's future
+          </p>
         </div>
 
         {/* Progress Bar */}
         <div className="mb-8">
           <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium">Step {currentStep} of {totalSteps}</span>
-            <span className="text-sm text-muted-foreground">{Math.round(progress)}% Complete</span>
+            <span className="text-sm font-medium">
+              Step {currentStep} of {totalSteps}
+            </span>
+            <span className="text-sm text-muted-foreground">
+              {Math.round(progress)}% Complete
+            </span>
           </div>
           <Progress value={progress} className="h-2" />
         </div>
+
+        {/* Error Banner */}
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
 
         <Card className="shadow-xl border-0 bg-card/95 backdrop-blur">
           <CardHeader className="text-center pb-6">
@@ -121,344 +256,355 @@ const Signup = () => {
               {currentStep === 4 && "Final Steps"}
             </CardTitle>
           </CardHeader>
+
           <CardContent className="space-y-6">
-            {/* Step 1: Basic Information */}
+            {/* Step 1 */}
             {currentStep === 1 && (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="firstName">First Name</Label>
+                    <Label>First Name</Label>
                     <Input
-                      id="firstName"
                       value={formData.firstName}
-                      onChange={(e) => handleInputChange("firstName", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("firstName", e.target.value)
+                      }
                       placeholder="Enter your first name"
-                      className="mt-1"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="lastName">Last Name</Label>
+                    <Label>Last Name</Label>
                     <Input
-                      id="lastName"
                       value={formData.lastName}
-                      onChange={(e) => handleInputChange("lastName", e.target.value)}
+                      onChange={(e) =>
+                        handleInputChange("lastName", e.target.value)
+                      }
                       placeholder="Enter your last name"
-                      className="mt-1"
                     />
                   </div>
                 </div>
-                
-                <div>
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange("email", e.target.value)}
-                    placeholder="your.email@example.com"
-                    className="mt-1"
-                  />
-                </div>
 
-                <div>
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) => handleInputChange("password", e.target.value)}
-                    placeholder="Create a strong password"
-                    className="mt-1"
-                  />
-                </div>
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  placeholder="your.email@example.com"
+                />
 
-                <div>
-                  <Label htmlFor="confirmPassword">Confirm Password</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    value={formData.confirmPassword}
-                    onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                    placeholder="Confirm your password"
-                    className="mt-1"
-                  />
-                </div>
+                <Label>Password</Label>
+                <Input
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) => handleInputChange("password", e.target.value)}
+                  placeholder="Create a strong password"
+                />
 
-                <div className="bg-primary/5 p-4 rounded-lg">
-                  <h4 className="font-medium text-primary mb-2">Why Join Uganda Connects?</h4>
-                  <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Connect with leaders and fellow citizens</li>
-                    <li>• Participate in meaningful discussions</li>
-                    <li>• Stay informed about important issues</li>
-                    <li>• Make your voice heard in Uganda's future</li>
-                  </ul>
-                </div>
+                <Label>Confirm Password</Label>
+                <Input
+                  type="password"
+                  value={formData.confirmPassword}
+                  onChange={(e) =>
+                    handleInputChange("confirmPassword", e.target.value)
+                  }
+                  placeholder="Confirm your password"
+                />
               </div>
             )}
 
-            {/* Step 2: Location & Interests */}
+            {/* Step 2 */}
             {currentStep === 2 && (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="region">Region</Label>
-                    <Select value={formData.region} onValueChange={(value) => handleInputChange("region", value)}>
-                      <SelectTrigger className="mt-1">
+                    <Label>Region</Label>
+                    <Select
+                      value={formData.region}
+                      onValueChange={(v) => handleInputChange("region", v)}
+                    >
+                      <SelectTrigger>
                         <SelectValue placeholder="Select your region" />
                       </SelectTrigger>
                       <SelectContent>
-                        {ugandaRegions.map((region) => (
-                          <SelectItem key={region} value={region}>{region}</SelectItem>
+                        {ugandaRegions.map((r) => (
+                          <SelectItem key={r} value={r}>
+                            {r}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div>
-                  <Label htmlFor="region">District</Label>
-                  <Select value={formData.region} onValueChange={(value) => handleInputChange("region", value)}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Select your District" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ugandaRegions.map((region) => (
-                        <SelectItem key={region} value={region}>{region}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                    <Label>District</Label>
+                    <Select
+                      value={formData.district}
+                      onValueChange={(v) => handleInputChange("district", v)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={
+                            loadingDistricts
+                              ? "Loading districts..."
+                              : "Select your district"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {districts.map((d) => (
+                          <SelectItem key={d.id} value={d.id.toString()}>
+                            {d.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="region">Sub-County</Label>
-                    <Select value={formData.region} onValueChange={(value) => handleInputChange("region", value)}>
-                      <SelectTrigger className="mt-1">
-                        <SelectValue placeholder="Select your Subcounty" />
+                    <Label>County</Label>
+                    <Select
+                      value={formData.county}
+                      onValueChange={(v) => handleInputChange("county", v)}
+                      disabled={!formData.district || loadingCounties}
+                    >
+                      <SelectTrigger>
+                        <SelectValue
+                          placeholder={
+                            loadingCounties
+                              ? "Loading counties..."
+                              : !formData.district
+                              ? "Select district first"
+                              : "Select your county"
+                          }
+                        />
                       </SelectTrigger>
                       <SelectContent>
-                        {ugandaRegions.map((region) => (
-                          <SelectItem key={region} value={region}>{region}</SelectItem>
+                        {counties.map((c) => (
+                          <SelectItem key={c.id} value={c.id.toString()}>
+                            {c.name}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
-                  
+
                   <div>
-                    <Label htmlFor="district">Address</Label>
+                    <Label>Occupation</Label>
                     <Input
-                      id="district"
-                      value={formData.district}
-                      onChange={(e) => handleInputChange("district", e.target.value)}
-                      placeholder="Enter your district"
-                      className="mt-1"
+                      value={formData.occupation}
+                      onChange={(e) =>
+                        handleInputChange("occupation", e.target.value)
+                      }
+                      placeholder="What do you do for work?"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="occupation">Occupation</Label>
-                  <Input
-                    id="occupation"
-                    value={formData.occupation}
-                    onChange={(e) => handleInputChange("occupation", e.target.value)}
-                    placeholder="What do you do for work?"
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
                   <Label>Areas of Interest</Label>
-                  <p className="text-sm text-muted-foreground mb-3">Select topics you're passionate about (choose at least 3)</p>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-2 mt-2">
                     {interestOptions.map((interest) => (
                       <Button
                         key={interest}
-                        variant={formData.interests.includes(interest) ? "default" : "outline"}
+                        variant={
+                          formData.interests.includes(interest)
+                            ? "default"
+                            : "outline"
+                        }
                         size="sm"
                         onClick={() => handleInterestToggle(interest)}
-                        className="justify-start"
                       >
                         {interest}
                       </Button>
                     ))}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Selected: {formData.interests.length} interests
-                  </p>
                 </div>
               </div>
             )}
 
-            {/* Step 3: Profile Setup */}
+            {/* Step 3 */}
             {currentStep === 3 && (
               <div className="space-y-4">
                 <div className="text-center">
-                  <div className="w-24 h-24 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
-                    <Camera className="h-8 w-8 text-muted-foreground" />
+                  <div className="w-24 h-24 mx-auto mb-4 rounded-full flex items-center justify-center bg-muted overflow-hidden">
+                    {previewImage ? (
+                      <img src={previewImage} alt="Profile Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <Camera className="h-8 w-8 text-muted-foreground" />
+                    )}
                   </div>
-                  <Button variant="outline" size="sm">
-                    Upload Profile Photo
-                  </Button>
-                </div>
 
-                <div>
-                  <Label htmlFor="bio">Bio</Label>
-                  <Textarea
-                    id="bio"
-                    value={formData.bio}
-                    onChange={(e) => handleInputChange("bio", e.target.value)}
-                    placeholder="Tell us about yourself, your goals, and what you hope to achieve on Uganda Connects..."
-                    className="mt-1 min-h-[100px]"
+                  <Button variant="outline" size="sm" onClick={() => document.getElementById("profileImage")?.click()}>
+                    {previewImage ? "Change Photo" : "Upload Profile Photo"}
+                  </Button>
+                  <input
+                    type="file"
+                    id="profileImage"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={(e) => e.target.files && handleInputChange("profileImage", e.target.files[0])}
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="politicalInterest">Political Interest Level</Label>
-                  <Select value={formData.politicalInterest} onValueChange={(value) => handleInputChange("politicalInterest", value)}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="How politically active are you?" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="very-active">Very Active</SelectItem>
-                      <SelectItem value="somewhat-active">Somewhat Active</SelectItem>
-                      <SelectItem value="interested">Interested Observer</SelectItem>
-                      <SelectItem value="casual">Casual Interest</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Label>Bio</Label>
+                <Textarea
+                  value={formData.bio}
+                  onChange={(e) => handleInputChange("bio", e.target.value)}
+                  placeholder="Tell us about yourself..."
+                />
 
-                <div>
-                  <Label htmlFor="communityRole">Community Role</Label>
-                  <Select value={formData.communityRole} onValueChange={(value) => handleInputChange("communityRole", value)}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="What's your role in the community?" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="citizen">Concerned Citizen</SelectItem>
-                      <SelectItem value="activist">Community Activist</SelectItem>
-                      <SelectItem value="leader">Community Leader</SelectItem>
-                      <SelectItem value="official">Government Official</SelectItem>
-                      <SelectItem value="journalist">Journalist/Media</SelectItem>
-                      <SelectItem value="student">Student</SelectItem>
-                      <SelectItem value="educator">Educator</SelectItem>
-                      <SelectItem value="business">Business Owner</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Label>Political Interest</Label>
+                <Select
+                  value={formData.politicalInterest}
+                  onValueChange={(v) => handleInputChange("politicalInterest", v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select your level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="very-active">Very Active</SelectItem>
+                    <SelectItem value="somewhat-active">
+                      Somewhat Active
+                    </SelectItem>
+                    <SelectItem value="interested">Interested Observer</SelectItem>
+                    <SelectItem value="casual">Casual Interest</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Label>Community Role</Label>
+                <Select
+                  value={formData.communityRole}
+                  onValueChange={(v) => handleInputChange("communityRole", v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select your role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="citizen">Concerned Citizen</SelectItem>
+                    <SelectItem value="leader">Community Leader</SelectItem>
+                    <SelectItem value="official">Government Official</SelectItem>
+                    <SelectItem value="student">Student</SelectItem>
+                    <SelectItem value="educator">Educator</SelectItem>
+                    <SelectItem value="business">Business Owner</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             )}
 
-            {/* Step 4: Final Steps */}
+            {/* Step 4 */}
             {currentStep === 4 && (
               <div className="space-y-6">
                 <div>
-                  <Label className="text-base font-medium">Notification Preferences</Label>
-                  <div className="space-y-3 mt-3">
+                  <Label>Notification Preferences</Label>
+                  <div className="space-y-2 mt-2">
                     <div className="flex items-center space-x-2">
-                      <Checkbox 
-                        id="email-notifications"
+                      <Checkbox
                         checked={formData.notifications.email}
-                        onCheckedChange={(checked) => 
-                          handleInputChange("notifications", {...formData.notifications, email: checked})
+                        onCheckedChange={(c) =>
+                          handleInputChange("notifications", {
+                            ...formData.notifications,
+                            email: c,
+                          })
                         }
                       />
-                      <Label htmlFor="email-notifications" className="text-sm">Email notifications for important updates</Label>
+                      <span>Email notifications</span>
                     </div>
+
                     <div className="flex items-center space-x-2">
-                      <Checkbox 
-                        id="sms-notifications"
+                      <Checkbox
                         checked={formData.notifications.sms}
-                        onCheckedChange={(checked) => 
-                          handleInputChange("notifications", {...formData.notifications, sms: checked})
+                        onCheckedChange={(c) =>
+                          handleInputChange("notifications", {
+                            ...formData.notifications,
+                            sms: c,
+                          })
                         }
                       />
-                      <Label htmlFor="sms-notifications" className="text-sm">SMS alerts for urgent matters</Label>
+                      <span>SMS alerts</span>
                     </div>
+
                     <div className="flex items-center space-x-2">
-                      <Checkbox 
-                        id="push-notifications"
+                      <Checkbox
                         checked={formData.notifications.push}
-                        onCheckedChange={(checked) => 
-                          handleInputChange("notifications", {...formData.notifications, push: checked})
+                        onCheckedChange={(c) =>
+                          handleInputChange("notifications", {
+                            ...formData.notifications,
+                            push: c,
+                          })
                         }
                       />
-                      <Label htmlFor="push-notifications" className="text-sm">Push notifications for discussions</Label>
+                      <span>Push notifications</span>
                     </div>
                   </div>
                 </div>
 
                 <div>
-                  <Label htmlFor="privacy">Privacy Level</Label>
-                  <Select value={formData.privacyLevel} onValueChange={(value) => handleInputChange("privacyLevel", value)}>
-                    <SelectTrigger className="mt-1">
-                      <SelectValue placeholder="Choose your privacy level" />
+                  <Label>Privacy Level</Label>
+                  <Select
+                    value={formData.privacyLevel}
+                    onValueChange={(v) => handleInputChange("privacyLevel", v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose privacy level" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="public">Public - Anyone can see your profile</SelectItem>
-                      <SelectItem value="friends">Friends Only - Only connections can see details</SelectItem>
-                      <SelectItem value="private">Private - Minimal information visible</SelectItem>
+                      <SelectItem value="public">Public</SelectItem>
+                      <SelectItem value="friends">Friends Only</SelectItem>
+                      <SelectItem value="private">Private</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="bg-accent/10 p-4 rounded-lg">
                   <div className="flex items-start space-x-2">
-                    <Checkbox 
-                      id="terms"
+                    <Checkbox
                       checked={formData.agreeToTerms}
-                      onCheckedChange={(checked) => handleInputChange("agreeToTerms", checked)}
+                      onCheckedChange={(c) => handleInputChange("agreeToTerms", c)}
                     />
-                    <div className="flex-1">
-                      <Label htmlFor="terms" className="text-sm cursor-pointer">
-                        I agree to the{" "}
-                        <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link>
-                        {" "}and{" "}
-                        <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
-                      </Label>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        By creating an account, you agree to participate respectfully in discussions and follow our community guidelines.
-                      </p>
-                    </div>
+                    <Label className="text-sm">
+                      I agree to the{" "}
+                      <Link
+                        to="/terms"
+                        className="text-primary hover:underline"
+                      >
+                        Terms of Service
+                      </Link>{" "}
+                      and{" "}
+                      <Link
+                        to="/privacy"
+                        className="text-primary hover:underline"
+                      >
+                        Privacy Policy
+                      </Link>
+                    </Label>
                   </div>
-                </div>
-
-                <div className="bg-primary/5 p-4 rounded-lg">
-                  <h4 className="font-medium text-primary mb-2 flex items-center">
-                    <Star className="h-4 w-4 mr-2" />
-                    You're Ready to Get Started!
-                  </h4>
-                  <p className="text-sm text-muted-foreground">
-                    Join thousands of Ugandans already making their voices heard. Your journey to meaningful civic engagement starts now.
-                  </p>
                 </div>
               </div>
             )}
 
             {/* Navigation Buttons */}
             <div className="flex justify-between pt-6 border-t">
-              <Button
-                variant="outline"
-                onClick={prevStep}
-                disabled={currentStep === 1}
-              >
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Previous
+              <Button variant="outline" onClick={prevStep} disabled={currentStep === 1}>
+                <ArrowLeft className="h-4 w-4 mr-2" /> Previous
               </Button>
 
               {currentStep < totalSteps ? (
-                <Button onClick={nextStep} className="bg-primary hover:bg-primary/90">
-                  Next
-                  <ArrowRight className="h-4 w-4 ml-2" />
+                <Button onClick={nextStep} className="bg-primary hover:bg-primary/90" disabled={loading}>
+                  Next <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               ) : (
-                <Button 
-                  onClick={handleSubmit} 
-                  disabled={!formData.agreeToTerms}
+                <Button
+                  onClick={handleSubmit}
+                  disabled={loading || !formData.agreeToTerms}
                   className="bg-gradient-primary hover:opacity-90"
                 >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Create Account
+                  {loading ? "Creating..." : (
+                    <>
+                      <CheckCircle className="h-4 w-4 mr-2" /> Create Account
+                    </>
+                  )}
                 </Button>
               )}
             </div>
@@ -469,7 +615,10 @@ const Signup = () => {
         <div className="text-center mt-6">
           <p className="text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link to="/signin" className="text-primary hover:underline font-medium">
+            <Link
+              to="/signin"
+              className="text-primary hover:underline font-medium"
+            >
               Sign in here
             </Link>
           </p>
