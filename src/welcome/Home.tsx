@@ -32,11 +32,12 @@ const Landing = () => {
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
               <a
-                href="#signup"
+                href="/feed"
                 className="inline-block bg-yellow-500 text-primary-foreground px-6 py-3 rounded-lg font-semibold hover:bg-yellow-400 transition"
               >
                 Get Started
               </a>
+              
 
               {/* Mobile-only Signin Button */}
               <button
