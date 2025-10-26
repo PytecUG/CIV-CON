@@ -1,12 +1,49 @@
-import { Search, Bell, Moon, Sun, Calendar } from "lucide-react";
-import { Link } from "react-router-dom";
+import {
+  Search,
+  Bell,
+  Moon,
+  Sun,
+  Calendar,
+  LogOut,
+  Settings,
+  User,
+} from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTheme } from "@/components/providers/ThemeProvider";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export const Header = () => {
   const { theme, setTheme } = useTheme();
+  const { user, loading, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    toast.success(" Logged out successfully");
+  };
+
+  //  Wait until user loading completes
+  if (loading) {
+    return (
+      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
+        <div className="container flex h-16 items-center justify-center">
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -19,7 +56,7 @@ export const Header = () => {
           <span className="font-bold text-xl text-gradient">CIV-CON</span>
         </div>
 
-        {/* Search Bar - Hidden on mobile */}
+        {/* Search Bar */}
         <div className="hidden md:flex flex-1 max-w-md mx-8">
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -51,20 +88,80 @@ export const Header = () => {
           </Link>
 
           {/* Notifications */}
-          <Link to="/notifications">
-            <Button variant="ghost" size="icon" className="relative">
-              <Bell className="h-5 w-5" />
-              <span className="absolute -top-1 -right-1 bg-red-500 text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                3
-              </span>
-            </Button>
-          </Link>
+          {user && (
+            <Link to="/notifications">
+              <Button variant="ghost" size="icon" className="relative">
+                <Bell className="h-5 w-5" />
+                <span className="absolute -top-1 -right-1 bg-red-500 text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                  3
+                </span>
+              </Button>
+            </Link>
+          )}
 
-          {/* User Avatar */}
-          <Avatar className="h-8 w-8">
-            <AvatarImage src="/api/placeholder/32/32" alt="User" />
-            <AvatarFallback className="bg-gray-200 text-gray-600">JD</AvatarFallback>
-          </Avatar>
+          {/*  Auth Section */}
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Avatar className="h-8 w-8 cursor-pointer border border-border hover:ring-2 hover:ring-primary/50 transition-all">
+                  <AvatarImage
+                    src={user.profile_image || "/api/placeholder/32/32"}
+                    alt={user.first_name}
+                  />
+                  <AvatarFallback className="bg-gray-200 text-gray-600">
+                    {user.first_name?.[0]}
+                    {user.last_name?.[0]}
+                  </AvatarFallback>
+                </Avatar>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent className="w-48 mt-2 shadow-lg">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col">
+                    <span className="font-medium">
+                      {user.first_name} {user.last_name}
+                    </span>
+                    <span className="text-xs text-muted-foreground truncate">
+                      {user.email}
+                    </span>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem
+                  onClick={() => navigate("/profile")}
+                  className="cursor-pointer"
+                >
+                  <User className="h-4 w-4 mr-2 text-primary" />
+                  Profile
+                </DropdownMenuItem>
+
+                <DropdownMenuItem
+                  onClick={() => navigate("/settings")}
+                  className="cursor-pointer"
+                >
+                  <Settings className="h-4 w-4 mr-2 text-primary" />
+                  Settings
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="text-red-500 cursor-pointer focus:text-red-600"
+                >
+                  <LogOut className="h-4 w-4 mr-2" />
+                  Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Link to="/signin">
+              <Button variant="outline" size="sm">
+                Sign In
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
     </header>

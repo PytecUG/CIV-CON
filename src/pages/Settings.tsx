@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,9 +8,134 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
-import { Settings as SettingsIcon, User, Bell, Shield, Moon, Globe } from "lucide-react";
+import {
+  Settings as SettingsIcon,
+  User,
+  Bell,
+  Shield,
+  Globe,
+  Trash2,
+  Power,
+  Upload,
+} from "lucide-react";
+import axios from "axios";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
+
+const API_BASE = "https://civcon.onrender.com";
 
 const Settings = () => {
+  const { token, user, refreshUser, logout } = useAuth();
+  const [formData, setFormData] = useState({
+    first_name: "",
+    last_name: "",
+    occupation: "",
+    bio: "",
+    region: "",
+    district_id: "",
+    privacy_level: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
+
+  // ✅ Load user info from backend
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        first_name: user.first_name || "",
+        last_name: user.last_name || "",
+        occupation: user.occupation || "",
+        bio: user.bio || "",
+        region: user.region || "",
+        district_id: user.district_id || "",
+        privacy_level: user.privacy_level || "",
+      });
+    }
+  }, [user]);
+
+  // ✅ Handle form field changes
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setFormData({ ...formData, [e.target.id]: e.target.value });
+  };
+
+  // ✅ Profile update
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      const form = new FormData();
+      Object.entries(formData).forEach(([key, value]) => {
+        if (value) form.append(key, value);
+      });
+
+      await axios.put(`${API_BASE}/users/profile`, form, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      toast.success("✅ Profile updated successfully!");
+      await refreshUser();
+    } catch (err: any) {
+      console.error(err);
+      toast.error("❌ Failed to update profile.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ✅ Profile image upload
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const form = new FormData();
+      form.append("profile_image", file);
+      await axios.put(`${API_BASE}/users/profile`, form, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data",
+        },
+      });
+      toast.success("✅ Profile photo updated!");
+      await refreshUser();
+    } catch (err) {
+      toast.error("❌ Image upload failed.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // ✅ Deactivate account
+  const handleDeactivate = async () => {
+    if (!confirm("Are you sure you want to deactivate your account?")) return;
+    try {
+      await axios.patch(`${API_BASE}/users/deactivate`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      toast.info("🟡 Account deactivated. You’ll be logged out.");
+      logout();
+    } catch (err) {
+      toast.error("❌ Failed to deactivate account.");
+    }
+  };
+
+  // ✅ Delete account
+  const handleDelete = async () => {
+    if (!confirm("⚠️ This will permanently delete your account. Continue?")) return;
+    try {
+      await axios.delete(`${API_BASE}/users/delete`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      toast.success("💀 Account deleted successfully.");
+      logout();
+    } catch (err) {
+      toast.error("❌ Failed to delete account.");
+    }
+  };
+
   return (
     <Layout>
       <div className="container mx-auto px-4 py-6 max-w-4xl">
@@ -30,81 +156,61 @@ const Settings = () => {
             <CardContent className="space-y-4">
               <div className="flex items-center gap-4">
                 <Avatar className="h-20 w-20">
-                  <AvatarImage src="/api/placeholder/80/80" alt="Profile" />
-                  <AvatarFallback>SN</AvatarFallback>
+                  <AvatarImage
+                    src={user?.profile_image || "/api/placeholder/80/80"}
+                    alt="Profile"
+                  />
+                  <AvatarFallback>
+                    {user?.first_name?.[0]}
+                    {user?.last_name?.[0]}
+                  </AvatarFallback>
                 </Avatar>
-                <Button variant="outline">Change Photo</Button>
+                <div>
+                  <Button
+                    variant="outline"
+                    disabled={uploading}
+                    onClick={() => document.getElementById("fileUpload")?.click()}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {uploading ? "Uploading..." : "Change Photo"}
+                  </Button>
+                  <input
+                    id="fileUpload"
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={handleFileChange}
+                  />
+                </div>
               </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="fullName">Full Name</Label>
-                  <Input id="fullName" defaultValue="Sarah Namuli" />
+                  <Label htmlFor="first_name">First Name</Label>
+                  <Input id="first_name" value={formData.first_name} onChange={handleChange} />
                 </div>
                 <div>
-                  <Label htmlFor="username">Username</Label>
-                  <Input id="username" defaultValue="snamuli" />
+                  <Label htmlFor="last_name">Last Name</Label>
+                  <Input id="last_name" value={formData.last_name} onChange={handleChange} />
                 </div>
                 <div>
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" defaultValue="sarah@example.com" />
+                  <Label htmlFor="occupation">Occupation</Label>
+                  <Input id="occupation" value={formData.occupation} onChange={handleChange} />
                 </div>
                 <div>
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input id="phone" defaultValue="+256 700 123 456" />
+                  <Label htmlFor="region">Region</Label>
+                  <Input id="region" value={formData.region} onChange={handleChange} />
                 </div>
               </div>
+
               <div>
                 <Label htmlFor="bio">Bio</Label>
-                <Textarea 
-                  id="bio" 
-                  placeholder="Tell us about yourself..." 
-                  defaultValue="Young entrepreneur passionate about social change and community development."
-                />
+                <Textarea id="bio" value={formData.bio} onChange={handleChange} />
               </div>
-              <Button>Save Changes</Button>
-            </CardContent>
-          </Card>
 
-          {/* Notification Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5" />
-                Notifications
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Email Notifications</Label>
-                  <p className="text-sm text-muted-foreground">Receive notifications via email</p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Push Notifications</Label>
-                  <p className="text-sm text-muted-foreground">Receive push notifications in browser</p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Message Notifications</Label>
-                  <p className="text-sm text-muted-foreground">Get notified about new messages</p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Comment Notifications</Label>
-                  <p className="text-sm text-muted-foreground">Get notified when someone comments on your posts</p>
-                </div>
-                <Switch defaultChecked />
-              </div>
+              <Button onClick={handleSave} disabled={loading}>
+                {loading ? "Saving..." : "Save Changes"}
+              </Button>
             </CardContent>
           </Card>
 
@@ -113,79 +219,49 @@ const Settings = () => {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
-                Privacy & Security
+                Privacy Settings
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent>
               <div className="flex items-center justify-between">
                 <div>
                   <Label>Private Profile</Label>
-                  <p className="text-sm text-muted-foreground">Only approved followers can see your posts</p>
+                  <p className="text-sm text-muted-foreground">
+                    Only approved followers can view your posts and details.
+                  </p>
                 </div>
-                <Switch />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Show Online Status</Label>
-                  <p className="text-sm text-muted-foreground">Let others see when you're online</p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Two-Factor Authentication</Label>
-                  <p className="text-sm text-muted-foreground">Add an extra layer of security</p>
-                </div>
-                <Button variant="outline" size="sm">Enable</Button>
+
+                <Switch
+                  checked={formData.privacy_level === "private"}
+                  onCheckedChange={async (checked) => {
+                    const newLevel = checked ? "private" : "public";
+                    setFormData((prev) => ({ ...prev, privacy_level: newLevel }));
+
+                    try {
+                      await axios.put(
+                        `${API_BASE}/users/profile`,
+                        { privacy_level: newLevel },
+                        {
+                          headers: {
+                            Authorization: `Bearer ${token}`,
+                          },
+                        }
+                      );
+                      toast.success(
+                        checked
+                          ? "🔒 Profile is now private."
+                          : "🌍 Profile is now public."
+                      );
+                      await refreshUser();
+                    } catch (err) {
+                      toast.error(" Failed to update privacy setting.");
+                    }
+                  }}
+                />
               </div>
             </CardContent>
           </Card>
 
-          {/* App Settings */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5" />
-                App Preferences
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Dark Mode</Label>
-                  <p className="text-sm text-muted-foreground">Switch to dark theme</p>
-                </div>
-                <Switch />
-              </div>
-              <Separator />
-              <div>
-                <Label htmlFor="language">Language</Label>
-                <select 
-                  id="language" 
-                  className="w-full mt-1 p-2 border border-input rounded-md bg-background"
-                >
-                  <option value="en">English</option>
-                  <option value="sw">Swahili</option>
-                  <option value="lg">Luganda</option>
-                </select>
-              </div>
-              <Separator />
-              <div>
-                <Label htmlFor="region">Region</Label>
-                <select 
-                  id="region" 
-                  className="w-full mt-1 p-2 border border-input rounded-md bg-background"
-                >
-                  <option value="central">Central Region</option>
-                  <option value="eastern">Eastern Region</option>
-                  <option value="northern">Northern Region</option>
-                  <option value="western">Western Region</option>
-                </select>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Danger Zone */}
           <Card>
@@ -194,19 +270,17 @@ const Settings = () => {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <div>
-                  <Label>Deactivate Account</Label>
-                  <p className="text-sm text-muted-foreground">Temporarily disable your account</p>
-                </div>
-                <Button variant="outline" size="sm">Deactivate</Button>
+                <Label>Deactivate Account</Label>
+                <Button variant="outline" onClick={handleDeactivate}>
+                  <Power className="h-4 w-4 mr-2" /> Deactivate
+                </Button>
               </div>
               <Separator />
               <div className="flex items-center justify-between">
-                <div>
-                  <Label>Delete Account</Label>
-                  <p className="text-sm text-muted-foreground">Permanently delete your account and all data</p>
-                </div>
-                <Button variant="destructive" size="sm">Delete</Button>
+                <Label>Delete Account</Label>
+                <Button variant="destructive" onClick={handleDelete}>
+                  <Trash2 className="h-4 w-4 mr-2" /> Delete
+                </Button>
               </div>
             </CardContent>
           </Card>

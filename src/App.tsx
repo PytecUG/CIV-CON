@@ -1,10 +1,13 @@
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ThemeProvider } from "@/components/providers/ThemeProvider";
-import Landing from "./pages/Landing";
+import { AuthProvider } from "@/context/AuthContext";
+
+// Pages
+import Home from "./welcome/Home";
 import Feed from "./pages/Feed";
 import Topics from "./pages/Topics";
 import Articles from "./pages/Articles";
@@ -18,13 +21,15 @@ import DiscussionRoom from "./pages/DiscussionRoom";
 import Events from "./pages/Events";
 import LiveDiscussion from "./pages/LiveDiscussion";
 import JoinDiscussions from "./pages/JoinDiscussions";
-import Home from "./welcome/Home";
 import Signup from "./welcome/Auth/Signup";
 import Signin from "./welcome/Auth/Signin";
-import NotFound from "./pages/NotFound";
 import ForgotPassword from "./welcome/Auth/ForgotPassword";
 import ResetPassword from "./welcome/Auth/ResetPassword";
-// Admin routes
+import NotFound from "./pages/NotFound";
+import Profile from "./pages/Profile";
+
+
+// Admin pages
 import { DashboardLayout } from "@/components/admin/layouts/DashboardLayout";
 import { Users } from "@/components/admin/pages/Users";
 import { AdminGroups } from "@/components/admin/pages/Groups";
@@ -37,49 +42,53 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="light" storageKey="uganda-connects-theme">
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            {/* Non-Admin Routes */}
-            <Route path="/" element={<Home />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/feed" element={<Feed />} />
-            <Route path="/topics" element={<Topics />} />
-            <Route path="/articles" element={<Articles />} />
-            <Route path="/explore" element={<Explore />} />
-            <Route path="/groups" element={<Groups />} />
-            <Route path="/people" element={<People />} />
-            <Route path="/notifications" element={<Notifications />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/post/:id" element={<PostDetail />} />
-            <Route path="/discussion/:topicId" element={<DiscussionRoom />} />
-            <Route path="/events" element={<Events />} />
-            <Route path="/live-discussion/:id" element={<LiveDiscussion />} />
-            <Route path="/join-discussions" element={<JoinDiscussions />} />
-            <Route path="/signup" element={<Signup />} />
-            <Route path="/signin" element={<Signin />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
+    <BrowserRouter>
+      <AuthProvider>
+        <ThemeProvider defaultTheme="light" storageKey="uganda-connects-theme">
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
 
-            {/* Admin Routes */}
-            <Route path="/admin" element={<DashboardLayout />}>
-              <Route index element={<Dashboard />} />
-              <Route path="dashboard" element={<Dashboard />} />
-              <Route path="users" element={<Users />} />
-              <Route path="groups" element={<AdminGroups />} />
-              <Route path="analytics" element={<Analytics />} />
-              <Route path="moderation" element={<Moderation />} />
-              <Route path="settings" element={<AdminSettings />} />
-            </Route>
-            {/* Catch-all Route */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </ThemeProvider>
+            <Routes>
+              {/* Public */}
+              <Route path="/" element={<Home />} />
+              <Route path="/feed" element={<Feed />} />
+              <Route path="/topics" element={<Topics />} />
+              <Route path="/articles" element={<Articles />} />
+              <Route path="/explore" element={<Explore />} />
+              <Route path="/groups" element={<Groups />} />
+              <Route path="/people" element={<People />} />
+              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/post/:id" element={<PostDetail />} />
+              <Route path="/discussion/:topicId" element={<DiscussionRoom />} />
+              <Route path="/events" element={<Events />} />
+              <Route path="/live-discussion/:id" element={<LiveDiscussion />} />
+              <Route path="/join-discussions" element={<JoinDiscussions />} />
+              <Route path="/signup" element={<Signup />} />
+              <Route path="/signin" element={<Signin />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
+
+              {/* Admin */}
+              <Route path="/admin" element={<DashboardLayout />}>
+                <Route index element={<Dashboard />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="users" element={<Users />} />
+                <Route path="groups" element={<AdminGroups />} />
+                <Route path="analytics" element={<Analytics />} />
+                <Route path="moderation" element={<Moderation />} />
+                <Route path="settings" element={<AdminSettings />} />
+              </Route>
+
+              {/* Catch all */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </TooltipProvider>
+        </ThemeProvider>
+      </AuthProvider>
+    </BrowserRouter>
   </QueryClientProvider>
 );
 
