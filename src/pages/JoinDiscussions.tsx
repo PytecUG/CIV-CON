@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -6,193 +6,127 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Progress } from "@/components/ui/progress";
-import { Link } from "react-router-dom";
-import { 
-  Users, 
-  MessageSquare, 
-  Search, 
-  Star, 
-  TrendingUp, 
+import { toast } from "sonner";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  Users,
+  MessageSquare,
+  Search,
   Calendar,
-  MapPin,
-  Clock,
-  CheckCircle,
-  ArrowRight,
   Heart,
   Share2,
-  Plus
+  ArrowRight,
+  CheckCircle,
 } from "lucide-react";
+import { groupService } from "@/services/groupService";
+import { liveFeedService } from "@/services/liveFeedService";
+import { useAuth } from "@/context/AuthContext";
 
-interface DiscussionGroup {
-  id: string;
-  name: string;
-  description: string;
-  members: number;
-  posts: number;
-  image: string;
-  category: string;
-  isJoined: boolean;
-  isPopular: boolean;
-  recentActivity: string;
-  location?: string;
-}
-
-interface FeaturedDiscussion {
-  id: string;
-  title: string;
-  description: string;
-  participants: number;
-  isLive: boolean;
-  tags: string[];
-  moderator: string;
-  startTime: string;
-}
-
-const featuredGroups: DiscussionGroup[] = [
-  {
-    id: '1',
-    name: 'Youth Voice Uganda',
-    description: 'Empowering young Ugandans to participate in democratic processes and leadership',
-    members: 2847,
-    posts: 456,
-    image: '/api/placeholder/80/80',
-    category: 'Youth Empowerment',
-    isJoined: false,
-    isPopular: true,
-    recentActivity: '5 minutes ago',
-    location: 'Nationwide'
-  },
-  {
-    id: '2',
-    name: 'Education Reform Now',
-    description: 'Discussing sustainable solutions for Uganda\'s education challenges',
-    members: 1923,
-    posts: 324,
-    image: '/api/placeholder/80/80',
-    category: 'Education',
-    isJoined: false,
-    isPopular: true,
-    recentActivity: '12 minutes ago',
-    location: 'Central Region'
-  },
-  {
-    id: '3',
-    name: 'Climate Action Uganda',
-    description: 'Environmental conservation and climate change adaptation strategies',
-    members: 1456,
-    posts: 278,
-    image: '/api/placeholder/80/80',
-    category: 'Environment',
-    isJoined: false,
-    isPopular: true,
-    recentActivity: '23 minutes ago',
-    location: 'All Regions'
-  },
-  {
-    id: '4',
-    name: 'Healthcare for All',
-    description: 'Advocating for accessible and quality healthcare across Uganda',
-    members: 1834,
-    posts: 389,
-    image: '/api/placeholder/80/80',
-    category: 'Healthcare',
-    isJoined: false,
-    isPopular: false,
-    recentActivity: '1 hour ago',
-    location: 'Rural Focus'
-  }
-];
-
-const liveDiscussions: FeaturedDiscussion[] = [
-  {
-    id: '1',
-    title: 'Youth Employment Crisis: Solutions from the Ground Up',
-    description: 'Join young entrepreneurs and policy makers discussing practical solutions',
-    participants: 234,
-    isLive: true,
-    tags: ['Employment', 'Youth', 'Policy'],
-    moderator: 'Hon. Sarah Opendi',
-    startTime: 'Live Now'
-  },
-  {
-    id: '2',
-    title: 'Digital Uganda: Technology and Innovation',
-    description: 'How technology can transform Uganda\'s future',
-    participants: 0,
-    isLive: false,
-    tags: ['Technology', 'Innovation', 'Digital'],
-    moderator: 'Dr. Moses Musaazi',
-    startTime: 'Tomorrow 3:00 PM'
-  }
-];
-
-const JoinDiscussions = () => {
+const JoinDiscussion = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("featured");
   const [searchTerm, setSearchTerm] = useState("");
+  const [groups, setGroups] = useState<any[]>([]);
+  const [liveFeeds, setLiveFeeds] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [joiningGroup, setJoiningGroup] = useState<number | null>(null);
 
-  const handleJoinGroup = (groupId: string) => {
-    console.log(`Joining group: ${groupId}`);
-    // Here you would handle the join logic
+  /** 🧭 Load Groups & Live Feeds */
+  const loadData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [groupsData, feedsData] = await Promise.all([
+        groupService.getAll(),
+        liveFeedService.getAll(),
+      ]);
+      setGroups(groupsData);
+      setLiveFeeds(feedsData);
+    } catch (err) {
+      console.error("❌ Failed to fetch discussions:", err);
+      toast.error("Unable to load discussions. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  /** 🤝 Join Group */
+  const handleJoinGroup = async (groupId: number, isJoined: boolean) => {
+    if (isJoined) {
+      navigate(`/groups/${groupId}`);
+      return;
+    }
+    try {
+      setJoiningGroup(groupId);
+      await groupService.join(groupId);
+      toast.success("🎉 You’ve joined the discussion!");
+      setGroups((prev) =>
+        prev.map((g) => (g.id === groupId ? { ...g, is_joined: true } : g))
+      );
+    } catch (err) {
+      console.error("Join group failed:", err);
+      toast.error("Failed to join this group. Please try again.");
+    } finally {
+      setJoiningGroup(null);
+    }
   };
 
+  /** 🔍 Filter Groups */
+  const filteredGroups = groups.filter(
+    (group) =>
+      group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      group.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  /** 🧱 Render */
   return (
     <Layout>
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Hero Section */}
+      <div className="container mx-auto px-4 py-10 max-w-6xl">
+        {/* 🏠 Hero */}
         <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-primary rounded-2xl mb-6">
-            <Users className="h-8 w-8 text-white" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-2xl mb-6">
+            <Users className="h-8 w-8 text-primary" />
           </div>
-          <h1 className="text-4xl font-bold text-gradient mb-4">
+          <h1 className="text-4xl font-bold tracking-tight mb-3">
             Join the Conversation
           </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-            Connect with fellow Ugandans, share your views, and be part of meaningful discussions that shape our nation's future.
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+            Connect with fellow Ugandans, share your views, and join live
+            discussions shaping our nation’s future.
           </p>
-          
-          {/* Quick Stats */}
-          <div className="grid grid-cols-3 gap-8 max-w-lg mx-auto mb-8">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">12.5K+</div>
-              <div className="text-sm text-muted-foreground">Active Members</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">450+</div>
-              <div className="text-sm text-muted-foreground">Discussion Groups</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-primary">24/7</div>
-              <div className="text-sm text-muted-foreground">Live Discussions</div>
-            </div>
-          </div>
         </div>
 
-        {/* Live Discussions Banner */}
-        <Card className="mb-8 bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-950 dark:to-pink-950 border-red-200 dark:border-red-800">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
+        {/* 🔴 Live Banner */}
+        {liveFeeds.length > 0 && (
+          <Card className="mb-10 border-red-300 bg-gradient-to-r from-red-50 to-pink-50 dark:from-red-950 dark:to-pink-950">
+            <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between">
+              <div className="flex items-center space-x-4 mb-4 sm:mb-0">
                 <div className="w-12 h-12 bg-red-500 rounded-full flex items-center justify-center animate-pulse">
-                  <div className="w-3 h-3 bg-white rounded-full"></div>
+                  <div className="w-3 h-3 bg-white rounded-full" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-red-900 dark:text-red-100">
+                  <h3 className="font-semibold text-lg text-red-900 dark:text-red-100">
                     Live Discussions Happening Now
                   </h3>
-                  <p className="text-red-700 dark:text-red-200">
-                    Join {liveDiscussions.filter(d => d.isLive).length} active discussions with {liveDiscussions.filter(d => d.isLive).reduce((acc, d) => acc + d.participants, 0)} participants
+                  <p className="text-sm text-red-700 dark:text-red-300">
+                    {liveFeeds.length} active sessions across Uganda
                   </p>
                 </div>
               </div>
-              <Button className="bg-red-500 hover:bg-red-600 text-white">
-                Join Live Discussion
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              <Link to="/live-discussions">
+                <Button className="bg-red-500 hover:bg-red-600 text-white">
+                  Join Live
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Search */}
+        {/* 🔍 Search */}
         <div className="relative mb-8">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
           <Input
@@ -203,209 +137,190 @@ const JoinDiscussions = () => {
           />
         </div>
 
-        {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="grid w-full grid-cols-4">
+        {/* 🗂 Tabs */}
+        <Tabs
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="space-y-8"
+        >
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="featured">Featured Groups</TabsTrigger>
             <TabsTrigger value="live">Live Discussions</TabsTrigger>
             <TabsTrigger value="popular">Popular Topics</TabsTrigger>
-            <TabsTrigger value="local">Local Groups</TabsTrigger>
           </TabsList>
 
-          {/* Featured Groups */}
+          {/* ⭐ Featured Groups */}
           <TabsContent value="featured" className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              {featuredGroups.map((group) => (
-                <Card key={group.id} className="hover:shadow-lg transition-all duration-300 overflow-hidden">
-                  <CardHeader className="pb-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center space-x-3">
-                        <Avatar className="h-16 w-16">
-                          <AvatarImage src={group.image} alt={group.name} />
-                          <AvatarFallback className="text-lg">{group.name.substring(0, 2)}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-1">
-                            <CardTitle className="text-lg">{group.name}</CardTitle>
-                            {group.isPopular && (
-                              <Badge variant="destructive" className="bg-yellow-400">
-                                <TrendingUp className="h-3 w-3 mr-1" />
-                                Popular
-                              </Badge>
-                            )}
+            {loading ? (
+              <div className="text-center text-muted-foreground py-10">
+                Loading discussions...
+              </div>
+            ) : filteredGroups.length === 0 ? (
+              <div className="text-center text-muted-foreground py-10">
+                No matching groups found.
+              </div>
+            ) : (
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredGroups.map((group) => (
+                  <Card
+                    key={group.id}
+                    className="hover:shadow-lg transition-all duration-300 border border-border/50"
+                  >
+                    <CardHeader className="pb-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center space-x-3">
+                          <Avatar className="h-14 w-14">
+                            <AvatarImage
+                              src={group.image || "/api/placeholder/80/80"}
+                              alt={group.name}
+                            />
+                            <AvatarFallback>
+                              {group.name.substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <CardTitle className="text-lg font-semibold">
+                              {group.name}
+                            </CardTitle>
+                            <Badge variant="outline" className="text-xs mt-1">
+                              {group.category || "General"}
+                            </Badge>
                           </div>
-                          <Badge variant="outline" className="mb-2">
-                            {group.category}
-                          </Badge>
                         </div>
                       </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <p className="text-muted-foreground">{group.description}</p>
-                    
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-1">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          <span>{group.members.toLocaleString()}</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                          <span>{group.posts} posts</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-1 text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        <span className="text-xs">{group.recentActivity}</span>
-                      </div>
-                    </div>
-
-                    {group.location && (
-                      <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                        <MapPin className="h-4 w-4" />
-                        <span>{group.location}</span>
-                      </div>
-                    )}
-
-                    <div className="flex space-x-2 pt-2">
-                      <Button 
-                        onClick={() => handleJoinGroup(group.id)}
-                        className="flex-1 bg-white border-1 border-red text-primary hover:bg-primary/90"
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Join Discussion
-                      </Button>
-                      <Button variant="outline" size="icon">
-                        <Heart className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="icon">
-                        <Share2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </TabsContent>
-
-          {/* Live Discussions */}
-          <TabsContent value="live" className="space-y-6">
-            {liveDiscussions.map((discussion) => (
-              <Card key={discussion.id} className={`${discussion.isLive ? 'border-red-500 bg-red-50/50 dark:bg-red-950/20' : ''}`}>
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-2">
-                        <h3 className="text-xl font-semibold">{discussion.title}</h3>
-                        {discussion.isLive && (
-                          <Badge variant="destructive" className="bg-red-500 animate-pulse">
-                            LIVE
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-muted-foreground mb-4">{discussion.description}</p>
-                      
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        {discussion.tags.map((tag) => (
-                          <Badge key={tag} variant="secondary">
-                            #{tag}
-                          </Badge>
-                        ))}
-                      </div>
-
-                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <p className="text-muted-foreground text-sm line-clamp-3">
+                        {group.description}
+                      </p>
+                      <div className="flex justify-between text-sm text-muted-foreground">
                         <div className="flex items-center space-x-4">
-                          <div className="flex items-center space-x-1">
+                          <span className="flex items-center gap-1">
                             <Users className="h-4 w-4" />
-                            <span>{discussion.participants} participants</span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <Calendar className="h-4 w-4" />
-                            <span>{discussion.startTime}</span>
-                          </div>
+                            {group.member_count || 0}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MessageSquare className="h-4 w-4" />
+                            {group.post_count || 0}
+                          </span>
                         </div>
-                        <span>Moderated by {discussion.moderator}</span>
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          onClick={() =>
+                            handleJoinGroup(group.id, group.is_joined)
+                          }
+                          disabled={joiningGroup === group.id}
+                          variant={group.is_joined ? "outline" : "default"}
+                          className="flex-1"
+                        >
+                          {joiningGroup === group.id
+                            ? "Joining..."
+                            : group.is_joined
+                            ? "View Discussion"
+                            : "Join Discussion"}
+                        </Button>
+                        <Button variant="ghost" size="icon">
+                          <Heart className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon">
+                          <Share2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+
+          {/* 🔴 Live Feeds */}
+          <TabsContent value="live" className="space-y-6">
+            {liveFeeds.length === 0 ? (
+              <div className="text-center text-muted-foreground py-10">
+                No live discussions right now.
+              </div>
+            ) : (
+              liveFeeds.map((feed) => (
+                <Card
+                  key={feed.id}
+                  className="border-red-300 bg-red-50/50 dark:bg-red-950/20"
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="text-lg font-semibold">
+                            {feed.title}
+                          </h3>
+                          {feed.is_active && (
+                            <Badge
+                              variant="destructive"
+                              className="bg-red-500 animate-pulse"
+                            >
+                              LIVE
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          {feed.description}
+                        </p>
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Users className="h-4 w-4" />
+                            Journalist:{" "}
+                            {feed.journalist?.first_name || "Unknown"}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-4 w-4" />
+                            {new Date(feed.created_at).toLocaleString()}
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-
-                  <div className="flex space-x-2">
-                    <Link 
-                      to={`/live-discussion/${discussion.id}`}
-                      className="flex-1"
-                    >
-                      <Button className={`w-full ${discussion.isLive ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-primary/90'}`}>
-                        {discussion.isLive ? 'Join Live Discussion' : 'Set Reminder'}
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                      </Button>
-                    </Link>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </TabsContent>
-
-          {/* Popular Topics */}
-          <TabsContent value="popular" className="space-y-6">
-            <div className="grid md:grid-cols-3 gap-4">
-              {[
-                { topic: "#YouthEmployment", posts: 2847, trend: "+15%" },
-                { topic: "#EducationReform", posts: 1923, trend: "+8%" },
-                { topic: "#HealthcareAccess", posts: 1456, trend: "+12%" },
-                { topic: "#ClimateAction", posts: 1234, trend: "+5%" },
-                { topic: "#DigitalUganda", posts: 1098, trend: "+20%" },
-                { topic: "#WomenRights", posts: 987, trend: "+7%" }
-              ].map((item) => (
-                <Card key={item.topic} className="hover:shadow-md transition-shadow cursor-pointer">
-                  <CardContent className="p-4 text-center">
-                    <h3 className="font-semibold text-primary text-lg mb-2">{item.topic}</h3>
-                    <p className="text-2xl font-bold mb-1">{item.posts.toLocaleString()}</p>
-                    <p className="text-sm text-muted-foreground">discussions</p>
-                    <Badge variant="secondary" className="mt-2 text-green-600">
-                      {item.trend} this week
-                    </Badge>
+                    <div className="mt-4">
+                      <Link to={`/live-discussion/${feed.id}`} className="block">
+                        <Button className="w-full bg-red-500 hover:bg-red-600 text-white">
+                          Join Live Discussion
+                          <ArrowRight className="h-4 w-4 ml-2" />
+                        </Button>
+                      </Link>
+                    </div>
                   </CardContent>
                 </Card>
-              ))}
-            </div>
+              ))
+            )}
           </TabsContent>
 
-          {/* Local Groups */}
-          <TabsContent value="local" className="space-y-6">
-            <div className="text-center py-8">
-              <MapPin className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-xl font-semibold mb-2">Connect with Your Community</h3>
-              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                Find discussion groups and events happening in your region, district, or local community.
-              </p>
-              <Button className="bg-primary hover:bg-primary/90">
-                <MapPin className="h-4 w-4 mr-2" />
-                Find Local Groups
-              </Button>
-            </div>
+          {/* 🔥 Popular Topics */}
+          <TabsContent value="popular" className="text-center text-muted-foreground py-10">
+            Coming soon — trending topics and top civic discussions!
           </TabsContent>
         </Tabs>
 
-        {/* Call to Action */}
-        <Card className="mt-12 bg-gradient-to-r from-primary/10 to-accent/10">
+        {/* 🚀 CTA */}
+        <Card className="mt-16 bg-gradient-to-r from-primary/10 to-accent/10">
           <CardContent className="p-8 text-center">
-            <h2 className="text-2xl font-bold mb-4">Ready to Make Your Voice Heard?</h2>
+            <h2 className="text-2xl font-bold mb-3">
+              Ready to Make Your Voice Heard?
+            </h2>
             <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
-              Join thousands of Ugandans already participating in meaningful discussions about our nation's future. 
-              Every voice matters, and yours could be the one that sparks positive change.
+              Join thousands of Ugandans engaging in civic discussions and live
+              updates from journalists. Every voice counts!
             </p>
-            <div className="flex justify-center space-x-4">
+            <div className="flex justify-center flex-wrap gap-4">
               <Link to="/signup">
                 <Button size="lg" className="bg-primary hover:bg-primary/90">
                   <CheckCircle className="h-5 w-5 mr-2" />
-                  Create community
+                  Create Account
                 </Button>
               </Link>
-              <Button variant="outline" size="lg">
-                <MessageSquare className="h-5 w-5 mr-2" />
-                 Join More Communities
-              </Button>
+              <Link to="/groups">
+                <Button variant="outline" size="lg">
+                  <MessageSquare className="h-5 w-5 mr-2" />
+                  Explore More Groups
+                </Button>
+              </Link>
             </div>
           </CardContent>
         </Card>
@@ -414,4 +329,4 @@ const JoinDiscussions = () => {
   );
 };
 
-export default JoinDiscussions;
+export default JoinDiscussion;

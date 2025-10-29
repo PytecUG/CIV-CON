@@ -7,6 +7,7 @@ import {
   Play,
   Edit,
   Trash2,
+  CornerDownRight,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ interface Comment {
     profile_image?: string;
   };
   created_at: string;
+  replies?: Comment[];
 }
 
 interface PostMedia {
@@ -78,6 +80,7 @@ export const PostCard = ({
   const [showCommentForm, setShowCommentForm] = useState(false);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loadingComments, setLoadingComments] = useState(false);
+  const [activeReply, setActiveReply] = useState<number | null>(null);
 
   useEffect(() => {
     setLikes(post.like_count || post.likes || 0);
@@ -85,7 +88,7 @@ export const PostCard = ({
     setShares(post.shares || 0);
   }, [post.id, post.like_count, post.is_liked, post.shares]);
 
-  /**  Fetch comments */
+  /** 🔹 Fetch comments */
   const fetchComments = async () => {
     setLoadingComments(true);
     try {
@@ -100,18 +103,12 @@ export const PostCard = ({
   };
 
   useEffect(() => {
-    if (showCommentForm) {
-      fetchComments();
-    }
+    if (showCommentForm) fetchComments();
   }, [showCommentForm]);
 
-  /**  Like / Unlike post */
+  /** 🔹 Like / Unlike */
   const handleLike = async () => {
-    if (!token) {
-      toast.error("Please sign in to like posts.");
-      return;
-    }
-
+    if (!token) return toast.error("Please sign in to like posts.");
     try {
       const res = await postService.toggleLike(post.id);
       setLikes(res.like_count ?? likes + (liked ? -1 : 1));
@@ -122,13 +119,9 @@ export const PostCard = ({
     }
   };
 
-  /**  Share post */
+  /** 🔹 Share post */
   const handleShare = async () => {
-    if (!token) {
-      toast.error("Please sign in to share posts.");
-      return;
-    }
-
+    if (!token) return toast.error("Please sign in to share posts.");
     try {
       const res = await postService.sharePost(post.id);
       setShares(res.share_count ?? shares + 1);
@@ -139,14 +132,13 @@ export const PostCard = ({
     }
   };
 
-  /**  Delete post */
+  /** 🔹 Delete post */
   const handleDelete = async () => {
     if (!token) return toast.error("Please sign in.");
     if (!confirm("Are you sure you want to delete this post?")) return;
-
     try {
       await postService.deletePost(post.id);
-      toast.success(" Post deleted successfully!");
+      toast.success("Post deleted successfully!");
       onPostDeleted?.(post.id);
     } catch (err) {
       console.error("Delete failed:", err);
@@ -154,12 +146,12 @@ export const PostCard = ({
     }
   };
 
-  /**  Submit comment */
+  /** 🔹 Submit top-level comment */
   const handleCommentSubmit = async (comment: string) => {
     try {
       const newComment = await postService.addComment(post.id, comment);
-      setComments((prev) => [newComment, ...prev]); // add to local UI
-      toast.success(" Comment added!");
+      setComments((prev) => [newComment, ...prev]);
+      toast.success("Comment added!");
       onCommentAdded?.();
     } catch (err) {
       console.error("Error submitting comment:", err);
@@ -167,7 +159,7 @@ export const PostCard = ({
     }
   };
 
-  /**  Role badge colors */
+  /** 🔹 Role badge colors */
   const getRoleColor = (role: string) => {
     switch (role?.toLowerCase()) {
       case "leader":
@@ -179,6 +171,59 @@ export const PostCard = ({
       default:
         return "bg-gray-200 text-gray-700";
     }
+  };
+
+  /** 🔹 Recursive renderer for nested comments */
+  const renderComments = (commentList: Comment[], depth = 0) => {
+    return commentList.map((c) => (
+      <div key={c.id} className={`mt-3 ${depth > 0 ? "ml-8" : ""}`}>
+        <div className="flex items-start space-x-3">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={c.author?.profile_image} alt={c.author?.username} />
+            <AvatarFallback>{c.author?.first_name?.[0]}</AvatarFallback>
+          </Avatar>
+          <div className="flex-1 bg-muted/30 p-2 rounded-lg">
+            <p className="text-sm font-medium">
+              {c.author?.first_name} {c.author?.last_name}
+              {user?.id === c.author?.id && (
+                <span className="text-xs text-green-600 ml-1">(You)</span>
+              )}
+            </p>
+            <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+              {c.content}
+            </p>
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-[11px] text-gray-400">
+                {new Date(c.created_at).toLocaleString()}
+              </p>
+              <button
+                onClick={() =>
+                  setActiveReply(activeReply === c.id ? null : c.id)
+                }
+                className="text-xs text-blue-500 hover:underline flex items-center"
+              >
+                <CornerDownRight className="h-3 w-3 mr-1" /> Reply
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Reply form inline */}
+        {activeReply === c.id && (
+          <CommentForm
+            postId={post.id}
+            isOpen={true}
+            parentId={c.id}
+            onClose={() => setActiveReply(null)}
+            onCommentAdded={fetchComments}
+            placeholder={`Replying to ${c.author?.first_name}...`}
+          />
+        )}
+
+        {/* Nested replies */}
+        {c.replies && c.replies.length > 0 && renderComments(c.replies, depth + 1)}
+      </div>
+    ));
   };
 
   return (
@@ -199,7 +244,6 @@ export const PostCard = ({
                 </AvatarFallback>
               )}
             </Avatar>
-
             <div>
               <div className="flex items-center space-x-2">
                 <h4 className="font-semibold text-foreground">
@@ -208,7 +252,10 @@ export const PostCard = ({
                     <span className="text-xs text-green-600 ml-2">(You)</span>
                   )}
                 </h4>
-                <Badge variant="secondary" className={getRoleColor(post.user.role)}>
+                <Badge
+                  variant="secondary"
+                  className={getRoleColor(post.user.role)}
+                >
                   {post.user.role}
                 </Badge>
               </div>
@@ -218,10 +265,14 @@ export const PostCard = ({
             </div>
           </div>
 
-          {/* Owner Actions */}
+          {/* Owner actions */}
           {user && user.id === post.user.id ? (
             <div className="flex space-x-2">
-              <Button variant="ghost" size="icon" onClick={() => toast.info("Edit feature coming soon ✏️")}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => toast.info("Edit feature coming soon ✏️")}
+              >
                 <Edit className="h-4 w-4 text-blue-500" />
               </Button>
               <Button variant="ghost" size="icon" onClick={handleDelete}>
@@ -243,7 +294,7 @@ export const PostCard = ({
             </p>
           </Link>
 
-          {post.media && post.media.length > 0 && (
+          {post.media?.length ? (
             <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
               {post.media.map((m, idx) =>
                 m.media_type.startsWith("image") ? (
@@ -263,7 +314,7 @@ export const PostCard = ({
                 ) : null
               )}
             </div>
-          )}
+          ) : null}
 
           {post.type === "interview" && (
             <div className="mt-3 p-4 bg-red-500 rounded-lg border border-red-600 flex items-center space-x-2 text-white">
@@ -312,44 +363,27 @@ export const PostCard = ({
           </div>
         </div>
 
-        {/* Comment Form + List */}
-        <CommentForm
-          postId={post.id}
-          isOpen={showCommentForm}
-          onClose={() => setShowCommentForm(false)}
-          onSubmit={handleCommentSubmit}
-          placeholder="Share your thoughts on this post..."
-        />
-
+        {/* Comment Section */}
         {showCommentForm && (
           <div className="mt-4 border-t pt-3 space-y-3">
+            <CommentForm
+              postId={post.id}
+              isOpen={true}
+              onClose={() => setShowCommentForm(false)}
+              onCommentAdded={fetchComments}
+              placeholder="Share your thoughts on this post..."
+            />
+
             {loadingComments ? (
-              <p className="text-sm text-muted-foreground">Loading comments...</p>
+              <p className="text-sm text-muted-foreground">
+                Loading comments...
+              </p>
             ) : comments.length > 0 ? (
-              comments.map((c) => (
-                <div key={c.id} className="flex items-start space-x-3">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={c.author?.profile_image} alt={c.author?.username} />
-                    <AvatarFallback>{c.author?.first_name?.[0]}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 bg-muted/30 p-2 rounded-lg">
-                    <p className="text-sm font-medium">
-                      {c.author?.first_name} {c.author?.last_name}
-                      {user?.id === c.author?.id && (
-                        <span className="text-xs text-green-600 ml-1">(You)</span>
-                      )}
-                    </p>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                      {c.content}
-                    </p>
-                    <p className="text-[11px] text-gray-400 mt-1">
-                      {new Date(c.created_at).toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-              ))
+              <div>{renderComments(comments)}</div>
             ) : (
-              <p className="text-sm text-muted-foreground">No comments yet. Be the first!</p>
+              <p className="text-sm text-muted-foreground">
+                No comments yet. Be the first!
+              </p>
             )}
           </div>
         )}
@@ -357,3 +391,4 @@ export const PostCard = ({
     </Card>
   );
 };
+

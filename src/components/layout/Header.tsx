@@ -9,12 +9,21 @@ import {
   User,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+
+//  Correct imports
+import { notificationService } from "@/services/notificationService"; // REST API (getAll, markRead)
+import {
+  connectNotificationSocket,
+  disconnectNotificationSocket,
+} from "@/services/notificationWS"; // WebSocket live updates
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,15 +35,69 @@ import {
 
 export const Header = () => {
   const { theme, setTheme } = useTheme();
-  const { user, loading, logout } = useAuth();
+  const { user, token, loading, logout } = useAuth();
   const navigate = useNavigate();
 
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+
   const handleLogout = () => {
+    disconnectNotificationSocket();
     logout();
-    toast.success(" Logged out successfully");
+    toast.success("Logged out successfully");
   };
 
-  //  Wait until user loading completes
+  //  Fetch unread notifications count (REST)
+  const fetchUnreadCount = async () => {
+    if (!user) return;
+    try {
+      const data = await notificationService.getAll();
+      const unread = data.filter((n: any) => !n.is_read).length;
+      setUnreadCount(unread);
+    } catch (err) {
+      console.error("Failed to fetch notifications count:", err);
+    }
+  };
+
+  //  Manage WebSocket connection + real-time updates
+  useEffect(() => {
+    if (!token || !user) return;
+
+    fetchUnreadCount();
+
+    let ws = connectNotificationSocket(token, (message) => {
+      console.log("📡 New notification:", message);
+      setUnreadCount((prev) => prev + 1);
+      toast.info(message.message || "New notification received!");
+    });
+
+    //  Auto-reconnect if WS closes
+    ws.onclose = () => {
+      console.warn(" WebSocket closed — reconnecting in 5s...");
+      setTimeout(() => {
+        if (token) {
+          ws = connectNotificationSocket(token, (message) => {
+            setUnreadCount((prev) => prev + 1);
+          });
+        }
+      }, 5000);
+    };
+
+    // Custom DOM events to sync with Notifications page
+    const onReadAll = () => setUnreadCount(0);
+    const onMarkOne = () => setUnreadCount((prev) => Math.max(0, prev - 1));
+
+    window.addEventListener("notifications:readAll", onReadAll);
+    window.addEventListener("notifications:markOneRead", onMarkOne);
+
+    return () => {
+      disconnectNotificationSocket();
+      window.removeEventListener("notifications:readAll", onReadAll);
+      window.removeEventListener("notifications:markOneRead", onMarkOne);
+      if (ws && ws.readyState === WebSocket.OPEN) ws.close();
+    };
+  }, [token, user?.id]);
+
+  //  Loading State
   if (loading) {
     return (
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
@@ -45,6 +108,7 @@ export const Header = () => {
     );
   }
 
+  //  Main Header
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between px-4">
@@ -56,7 +120,7 @@ export const Header = () => {
           <span className="font-bold text-xl text-gradient">CIV-CON</span>
         </div>
 
-        {/* Search Bar */}
+        {/* Search */}
         <div className="hidden md:flex flex-1 max-w-md mx-8">
           <div className="relative w-full">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
@@ -69,7 +133,7 @@ export const Header = () => {
 
         {/* Actions */}
         <div className="flex items-center space-x-2">
-          {/* Theme Toggle */}
+          {/* Theme toggle */}
           <Button
             variant="ghost"
             size="icon"
@@ -92,14 +156,16 @@ export const Header = () => {
             <Link to="/notifications">
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="h-5 w-5" />
-                <span className="absolute -top-1 -right-1 bg-red-500 text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  3
-                </span>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
               </Button>
             </Link>
           )}
 
-          {/*  Auth Section */}
+          {/* Auth Section */}
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -126,6 +192,7 @@ export const Header = () => {
                     </span>
                   </div>
                 </DropdownMenuLabel>
+
                 <DropdownMenuSeparator />
 
                 <DropdownMenuItem

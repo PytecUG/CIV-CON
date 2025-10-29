@@ -3,6 +3,8 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import api from "@/api/client"; 
+import { useAuth } from "@/context/AuthContext";
+
 
 import {
   Card,
@@ -27,12 +29,13 @@ const Signin = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { login } = useAuth();
 
   //  Redirect logged-in users automatically
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      navigate("/feed"); // or "/home", whichever you prefer
+      navigate("/feed"); // or "/home", 
     }
   }, [navigate]);
 
@@ -54,8 +57,10 @@ const Signin = () => {
       const token = res.data.access_token;
       if (!token) throw new Error("No token returned from API");
 
-      localStorage.setItem("token", token);
-      navigate("/feed");
+      //  Trigger AuthContext login
+      await login(token);
+
+      navigate("/feed", { replace: true });
     } catch (err: any) {
       console.error("Login error:", err);
       setError(err.response?.data?.detail || "Login failed");
@@ -63,6 +68,7 @@ const Signin = () => {
       setLoading(false);
     }
   };
+
 
 
   return (

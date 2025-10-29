@@ -24,20 +24,23 @@ import {
 } from "@/components/ui/dialog";
 import { CreatePost } from "@/components/forms/CreatePost";
 import { cn } from "@/lib/utils";
+import { postService } from "@/services/postService";
+
+
 
 const sidebarItems = [
   { title: "Home", icon: Home, href: "/feed" },
   { title: "Articles", icon: FileText, href: "/articles" },
   { title: "Topics", icon: GitGraph, href: "/topics" },
   { title: "Groups", icon: Users, href: "/groups" },
-  { title: "Post", icon: Compass }, // No href, uses Dialog
+  { title: "Post", icon: Compass },
   { title: "Connect", icon: UserPlus, href: "/People" },
   { title: "Live Discussion", icon: Video, href: "/join-discussions" },
   { title: "Settings", icon: Settings, href: "/settings" },
 ];
 
 interface CollapsibleSidebarProps {
-  isOpen: boolean; // required controlled prop
+  isOpen: boolean;
   onToggle: () => void;
   className?: string;
 }
@@ -95,7 +98,6 @@ export const CollapsibleSidebar = ({ isOpen, onToggle, className }: CollapsibleS
                     )}
                   </Button>
                 </DialogTrigger>
-
                 <DialogContent className="max-w-[90vw] xs:max-w-[400px] sm:max-w-[500px] md:max-w-[650px] lg:max-w-[800px] p-3 xs:p-4 sm:p-5">
                   <DialogHeader>
                     <DialogTitle className="text-sm xs:text-base sm:text-lg md:text-xl text-primary">
@@ -111,7 +113,7 @@ export const CollapsibleSidebar = ({ isOpen, onToggle, className }: CollapsibleS
           return (
             <NavLink
               key={item.href}
-              to={item.href}
+              to={item.href!}
               className={cn(
                 "flex items-center justify-start p-3 w-full h-10 rounded-lg transition-all duration-200 group text-sm font-medium",
                 isActive
@@ -139,13 +141,11 @@ export const CollapsibleSidebar = ({ isOpen, onToggle, className }: CollapsibleS
 
       {/* Logout Button */}
       <div className="p-2 xs:p-3 border-t">
-        <NavLink
-          to="/"
+        <Button
+          onClick={() => postService.logout()}
+          variant="ghost"
           className={cn(
-            "flex items-center justify-start p-3 w-full h-10 rounded-lg transition-all duration-200 group text-sm font-medium",
-            location.pathname === "/"
-              ? "bg-primary text-primary-foreground shadow-md"
-              : "text-muted-foreground hover:text-foreground hover:bg-accent",
+            "flex items-center justify-start p-3 w-full h-10 rounded-lg transition-all duration-200 group text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-accent",
             !isOpen && "justify-center"
           )}
         >
@@ -156,7 +156,7 @@ export const CollapsibleSidebar = ({ isOpen, onToggle, className }: CollapsibleS
               Log Out
             </div>
           )}
-        </NavLink>
+        </Button>
       </div>
     </div>
   );

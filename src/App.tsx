@@ -13,6 +13,7 @@ import Topics from "./pages/Topics";
 import Articles from "./pages/Articles";
 import Explore from "./pages/Explore";
 import Groups from "./pages/Groups";
+import GroupDiscussions from "@/pages/GroupDiscussions";
 import People from "./pages/People";
 import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
@@ -57,6 +58,7 @@ const App = () => (
               <Route path="/articles" element={<Articles />} />
               <Route path="/explore" element={<Explore />} />
               <Route path="/groups" element={<Groups />} />
+              <Route path="/groups/:id/discussions" element={<GroupDiscussions />} />
               <Route path="/people" element={<People />} />
               <Route path="/notifications" element={<Notifications />} />
               <Route path="/settings" element={<Settings />} />

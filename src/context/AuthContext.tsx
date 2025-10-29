@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 const API_BASE = "https://civcon.onrender.com";
 
-/*   Types   */
+/* Types */
 interface User {
   id: number;
   first_name: string;
@@ -21,15 +21,15 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   loading: boolean;
-  login: (token: string) => Promise<void>;
+  login: (token: string, userData?: User) => Promise<void>;
   logout: (silent?: boolean) => void;
   refreshUser: () => Promise<void>;
 }
 
-/*   Context   */
+/* Context */
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-/*   Provider  */
+/* Provider */
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
@@ -41,7 +41,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     headers: { Authorization: token ? `Bearer ${token}` : "" },
   });
 
-  /*  Helper: Decode JWT and check expiration */
+  /* Helper: Decode JWT and check expiration */
   const isTokenExpired = (token: string): boolean => {
     try {
       const [, payloadBase64] = token.split(".");
@@ -53,7 +53,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  /*  Refresh user data from /auth/me */
+  /* Refresh user data from /auth/me */
   const refreshUser = async () => {
     if (!token) {
       setUser(null);
@@ -71,7 +71,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const res = await api.get("/auth/me");
       setUser(res.data);
     } catch (err) {
-      console.error(" Failed to fetch /auth/me:", err);
+      console.error("Failed to fetch /auth/me:", err);
       localStorage.removeItem("token");
       setToken(null);
       setUser(null);
@@ -80,23 +80,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  /*  Login: store token and fetch user */
-  const login = async (jwtToken: string) => {
+  /* Login: store token and optionally accept user info for instant update */
+  const login = async (jwtToken: string, userData?: User) => {
     localStorage.setItem("token", jwtToken);
     setToken(jwtToken);
-    await refreshUser();
+
+    if (userData) {
+      // Immediately set user without waiting for /auth/me
+      setUser(userData);
+      setLoading(false);
+    } else {
+      // fallback: fetch user if not provided
+      await refreshUser();
+    }
   };
 
-  /*  Logout: clear token + toast + redirect */
+  /* Logout: clear token + toast + redirect */
   const logout = (silent = false) => {
     localStorage.removeItem("token");
     setUser(null);
     setToken(null);
-    if (!silent) toast.success("✅ Logged out successfully.");
+    if (!silent) toast.success(" Logged out successfully.");
     navigate("/signin", { replace: true });
   };
 
-  /*  Auto-refresh user & periodic token check */
+  /* Auto-refresh user & periodic token check */
   useEffect(() => {
     refreshUser();
 
@@ -110,7 +118,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => clearInterval(interval);
   }, [token]);
 
-  /*  Provide context to children */
+  /* Provide context to children */
   return (
     <AuthContext.Provider value={{ user, token, loading, login, logout, refreshUser }}>
       {loading ? (
@@ -124,11 +132,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-/*   Hook   */
+/* Hook */
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error(" useAuth must be used within an <AuthProvider>");
+    throw new Error("useAuth must be used within an <AuthProvider>");
   }
   return context;
 };
