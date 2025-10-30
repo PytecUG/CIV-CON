@@ -1,24 +1,35 @@
-
-import type { AxiosError, CancelTokenSource } from "axios";
-import type { AxiosProgressEvent } from "axios";
-
+import axios, {
+  AxiosError,
+  AxiosInstance,
+  AxiosProgressEvent,
+  CancelTokenSource,
+  InternalAxiosRequestConfig,
+} from "axios";
 import { toast } from "sonner";
 
-const API_BASE = "https://civcon.onrender.com";
+/**  Backend API base URL */
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://civcon.onrender.com";
+;
 
-const api = axios.create({
+/**  Axios instance */
+const api: AxiosInstance = axios.create({
   baseURL: API_BASE,
   timeout: 20000,
 });
 
-//  Inject token into every request
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
+/**  Attach token to every request */
+api.interceptors.request.use(
+  (config: InternalAxiosRequestConfig) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
-//  Auto logout on 401 Unauthorized
+/**  Auto logout on unauthorized (401) */
 api.interceptors.response.use(
   (res) => res,
   (error: AxiosError) => {
@@ -31,14 +42,15 @@ api.interceptors.response.use(
   }
 );
 
+/**  Post Service */
 export const postService = {
   /**  Get all posts */
   async getAllPosts() {
     try {
       const res = await api.get("/posts/");
       return res.data;
-    } catch (err: any) {
-      console.error(" Error fetching posts:", err.response?.data || err.message);
+    } catch (err) {
+      console.error("Error fetching posts:", err);
       toast.error("Failed to load posts from server.");
       throw err;
     }
@@ -49,20 +61,20 @@ export const postService = {
     try {
       const res = await api.get(`/posts/${id}`);
       return res.data;
-    } catch (err: any) {
-      console.error(" Error fetching post:", err);
+    } catch (err) {
+      console.error("Error fetching post:", err);
       toast.error("Post not found or failed to load.");
       throw err;
     }
   },
 
-  /**  Toggle like / unlike */
+  /**  Toggle like/unlike */
   async toggleLike(postId: number) {
     try {
       const res = await api.post(`/posts/${postId}/like`);
-      return res.data; // should contain { is_liked, like_count }
-    } catch (err: any) {
-      console.error(" Error toggling like:", err.response?.data || err.message);
+      return res.data;
+    } catch (err) {
+      console.error("Error toggling like:", err);
       toast.error("Could not update like status.");
       throw err;
     }
@@ -73,8 +85,8 @@ export const postService = {
     try {
       const res = await api.get(`/posts/${postId}/comments`);
       return res.data;
-    } catch (err: any) {
-      console.error(" Error fetching comments:", err.response?.data || err.message);
+    } catch (err) {
+      console.error("Error fetching comments:", err);
       toast.error("Could not load comments for this post.");
       throw err;
     }
@@ -87,8 +99,8 @@ export const postService = {
       const res = await api.post(`/posts/${postId}/comments`, payload);
       toast.success("Comment added!");
       return res.data;
-    } catch (err: any) {
-      console.error(" Error adding comment:", err.response?.data || err.message);
+    } catch (err) {
+      console.error("Error adding comment:", err);
       toast.error("Failed to post comment. Please try again.");
       throw err;
     }
@@ -106,10 +118,9 @@ export const postService = {
         onUploadProgress,
         cancelToken: cancelToken?.token,
       });
-      toast.success("Post created successfully!");
       return res.data;
-    } catch (err: any) {
-      console.error(" Error creating post:", err.response?.data || err.message);
+    } catch (err) {
+      console.error("Error creating post:", err);
       toast.error("Failed to upload post. Please try again.");
       throw err;
     }
@@ -134,7 +145,7 @@ export const postService = {
       const res = await api.post(`/posts/${postId}/share`);
       toast.success("Post shared successfully!");
       return res.data;
-    } catch (err: any) {
+    } catch (err) {
       console.error("Error sharing post:", err);
       toast.error("Failed to share post.");
       throw err;
@@ -149,29 +160,26 @@ export const postService = {
       });
       toast.success("Post updated successfully!");
       return res.data;
-    } catch (err: any) {
-      console.error(" Error updating post:", err.response?.data || err.message);
+    } catch (err) {
+      console.error("Error updating post:", err);
       toast.error("Failed to update post.");
       throw err;
     }
   },
-    /**  Logout current user */
+
+  /**  Logout current user */
   async logout() {
     try {
-      // Optional backend call (if endpoint exists)
-      await api.post("/auth/logout").catch(() => {}); 
-
-      // Clear local data
+      await api.post("/auth/logout").catch(() => {});
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       toast.success("You have been logged out.");
-      window.location.href = "/signin";  // redirect to login page
-    } catch (err: any) {
-      console.error("Error logging out:", err.response?.data || err.message);
+      window.location.href = "/signin";
+    } catch (err) {
+      console.error("Error logging out:", err);
       toast.error("Logout failed, please try again.");
     }
   },
-
 
   /**  Delete a post */
   async deletePost(postId: number) {
@@ -179,8 +187,8 @@ export const postService = {
       await api.delete(`/posts/${postId}`);
       toast.success("Post deleted successfully!");
       return true;
-    } catch (err: any) {
-      console.error(" Error deleting post:", err.response?.data || err.message);
+    } catch (err) {
+      console.error("Error deleting post:", err);
       toast.error("Failed to delete post.");
       throw err;
     }
@@ -191,5 +199,3 @@ export const postService = {
     return axios.CancelToken.source();
   },
 };
-
-

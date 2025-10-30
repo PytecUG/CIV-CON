@@ -4,18 +4,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ImageIcon, MapPin, Calendar, X, XCircle } from "lucide-react";
-import { postService } from "@/services/postService";
-import { toast } from "sonner";
-import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
-import axios from "axios";
+import axios, { AxiosProgressEvent, CancelTokenSource } from "axios";
+import { toast } from "sonner";
+
+import { postService } from "@/services/postService";
+import { useAuth } from "@/context/AuthContext";
 
 interface CreatePostProps {
-  onPostCreated?: () => void;
+  /** Called when a post is successfully created */
+  onPostCreated?: (post: any) => void;
 }
 
-export function CreatePost({ onPostCreated }: CreatePostProps) {
+export const CreatePost: React.FC<CreatePostProps> = ({ onPostCreated }) => {
   const { user, token } = useAuth();
+
   const [content, setContent] = useState("");
   const [media, setMedia] = useState<File[]>([]);
   const [mediaPreview, setMediaPreview] = useState<{ url: string; type: string }[]>([]);
@@ -23,19 +26,20 @@ export function CreatePost({ onPostCreated }: CreatePostProps) {
   const [eventDate, setEventDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const cancelSource = useRef(postService.createCancelToken());
 
-  /**  Handle file uploads (images/videos) */
+  const cancelSource = useRef<CancelTokenSource>(postService.createCancelToken());
+
+  /** Handle file uploads (images/videos) */
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     const fileArray = Array.from(files);
 
-    //  File validation
+    // Validate file sizes
     for (const file of fileArray) {
       if (file.size > 25 * 1024 * 1024) {
-        toast.error(`File "${file.name}" is too large. Max 25MB allowed.`);
+        toast.error(`File "${file.name}" is too large. Max 25 MB allowed.`);
         return;
       }
     }
@@ -47,10 +51,11 @@ export function CreatePost({ onPostCreated }: CreatePostProps) {
     }));
     setMediaPreview((prev) => [...prev, ...previews]);
 
-    e.target.value = ""; // reset file input so same file can be reselected
+    // reset input so same file can be reselected
+    e.target.value = "";
   };
 
-  /**  Remove one or all uploaded media */
+  /** Remove one or all uploaded media */
   const clearMedia = (index?: number) => {
     if (index !== undefined) {
       setMedia((prev) => prev.filter((_, i) => i !== index));
@@ -61,70 +66,70 @@ export function CreatePost({ onPostCreated }: CreatePostProps) {
     }
   };
 
-  /**  Submit the post */
-const handleSubmit = async () => {
-  if (!token) {
-    toast.error("Please sign in to create a post.");
-    return;
-  }
-
-  if (!content.trim() && media.length === 0) {
-    toast.error("Post content or at least one media file is required.");
-    return;
-  }
-
-  setLoading(true);
-  setUploadProgress(0);
-  cancelSource.current = postService.createCancelToken();
-
-  try {
-    const formData = new FormData();
-    formData.append("title", "Post"); // backend requires a title field
-    formData.append("content", content);
-    if (location) formData.append("location", location);
-    if (eventDate) formData.append("event_date", eventDate);
-    media.forEach((file) => formData.append("media_files", file));
-
-    //  Create post
-    const res = await postService.createPost(
-      formData,
-      (progressEvent: ProgressEvent) => {
-        if (progressEvent.total) {
-          const percent = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
-          setUploadProgress(percent);
-        }
-      },
-      cancelSource.current
-    );
-
-    toast.success(" Post created successfully!");
-
-    //  Pass new post to Feed.tsx for instant insertion
-    onPostCreated && onPostCreated(res);
-
-    // Reset form
-    setContent("");
-    setMedia([]);
-    setMediaPreview([]);
-    setLocation("");
-    setEventDate("");
-    setUploadProgress(0);
-  } catch (err: any) {
-    if (axios.isCancel(err)) {
-      toast.info("Upload cancelled.");
-    } else {
-      console.error("Error creating post:", err);
-      toast.error("Failed to create post. Please try again.");
+  /** Submit the post */
+  const handleSubmit = async (): Promise<void> => {
+    if (!token) {
+      toast.error("Please sign in to create a post.");
+      return;
     }
-  } finally {
-    setLoading(false);
-  }
-};
 
+    if (!content.trim() && media.length === 0) {
+      toast.error("Post content or at least one media file is required.");
+      return;
+    }
 
-  /**  Cancel upload */
+    setLoading(true);
+    setUploadProgress(0);
+    cancelSource.current = postService.createCancelToken();
+
+    try {
+      const formData = new FormData();
+      formData.append("title", "Post");
+      formData.append("content", content);
+      if (location) formData.append("location", location);
+      if (eventDate) formData.append("event_date", eventDate);
+      media.forEach((file) => formData.append("media_files", file));
+
+      // Create post
+      const res = await postService.createPost(
+        formData,
+        (progressEvent: AxiosProgressEvent) => {
+          if (progressEvent.total) {
+            const percent = Math.round(
+              ((progressEvent.loaded || 0) * 100) / progressEvent.total
+            );
+            setUploadProgress(percent);
+          }
+        },
+        cancelSource.current
+      );
+
+      toast.success("Post created successfully!");
+      onPostCreated?.(res);
+
+      // Reset form
+      setContent("");
+      setMedia([]);
+      setMediaPreview([]);
+      setLocation("");
+      setEventDate("");
+      setUploadProgress(0);
+    } catch (err: unknown) {
+      if (axios.isCancel(err)) {
+        toast.info("Upload cancelled.");
+      } else if (err instanceof Error) {
+        console.error("Error creating post:", err.message);
+        toast.error("Failed to create post. Please try again.");
+      } else {
+        console.error("Unexpected error creating post:", err);
+        toast.error("Something went wrong.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /** Cancel upload */
   const handleCancelUpload = () => {
     cancelSource.current.cancel("Upload cancelled by user.");
     setLoading(false);
@@ -136,7 +141,7 @@ const handleSubmit = async () => {
     <Card className="shadow-soft w-full max-w-full md:max-w-2xl lg:max-w-3xl mx-auto">
       <CardContent className="p-4 sm:p-5 md:p-6 lg:p-8">
         <div className="flex items-start gap-4">
-          {/*  User Avatar */}
+          {/* User Avatar */}
           <Avatar className="h-10 w-10">
             <AvatarImage
               src={user?.profile_image || "/api/placeholder/40/40"}
@@ -149,7 +154,7 @@ const handleSubmit = async () => {
           </Avatar>
 
           <div className="flex-1">
-            {/*  Content Input */}
+            {/* Content Input */}
             <Textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}
@@ -157,7 +162,7 @@ const handleSubmit = async () => {
               className="min-h-[100px] border-none resize-none focus-visible:ring-0 text-sm sm:text-base"
             />
 
-            {/*  Media Previews */}
+            {/* Media Previews */}
             {mediaPreview.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                 {mediaPreview.map((m, idx) => (
@@ -178,6 +183,7 @@ const handleSubmit = async () => {
                     <button
                       onClick={() => clearMedia(idx)}
                       className="absolute top-2 right-2 bg-black/60 text-white rounded-full p-1"
+                      type="button"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -186,7 +192,7 @@ const handleSubmit = async () => {
               </div>
             )}
 
-            {/*  Upload Progress Bar */}
+            {/* Upload Progress Bar */}
             {loading && (
               <div className="mt-4">
                 <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
@@ -232,7 +238,9 @@ const handleSubmit = async () => {
                   type="button"
                   variant="ghost"
                   size="sm"
-                  onClick={() => document.getElementById("media-upload")?.click()}
+                  onClick={() =>
+                    document.getElementById("media-upload")?.click()
+                  }
                 >
                   <ImageIcon className="h-4 w-4 mr-2" />
                   Add Media
@@ -241,6 +249,7 @@ const handleSubmit = async () => {
                 <Button
                   variant="ghost"
                   size="sm"
+                  type="button"
                   onClick={() => {
                     const userLoc = prompt("Enter your location:", location);
                     if (userLoc) setLocation(userLoc);
@@ -253,6 +262,7 @@ const handleSubmit = async () => {
                 <Button
                   variant="ghost"
                   size="sm"
+                  type="button"
                   onClick={() => {
                     const date = prompt("Enter event date (YYYY-MM-DD):", eventDate);
                     if (date) setEventDate(date);
@@ -277,4 +287,4 @@ const handleSubmit = async () => {
       </CardContent>
     </Card>
   );
-}
+};
