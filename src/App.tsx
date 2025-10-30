@@ -24,6 +24,7 @@ import LiveDiscussion from "./pages/LiveDiscussion";
 import JoinDiscussions from "./pages/JoinDiscussions";
 import Signup from "./welcome/Auth/Signup";
 import Signin from "./welcome/Auth/Signin";
+import SocialLogin from "./welcome/Auth/SocialLogin";
 import ForgotPassword from "./welcome/Auth/ForgotPassword";
 import ResetPassword from "./welcome/Auth/ResetPassword";
 import NotFound from "./pages/NotFound";
@@ -70,6 +71,7 @@ const App = () => (
               <Route path="/join-discussions" element={<JoinDiscussions />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/signin" element={<Signin />} />
+              <Route path="/social-login" element={<SocialLogin />} />               
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
 

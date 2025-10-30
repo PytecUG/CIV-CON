@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
-import api from "@/api/client"; 
+import api from "@/api/client";
 import { useAuth } from "@/context/AuthContext";
-
 
 import {
   Card,
@@ -16,9 +14,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Mail, Lock } from "lucide-react";
+import { Mail, Lock } from "lucide-react";
 
-//
 const Signin = () => {
   const [formData, setFormData] = useState({
     email: "",
@@ -31,15 +28,15 @@ const Signin = () => {
   const [error, setError] = useState<string | null>(null);
   const { login } = useAuth();
 
-  //  Redirect logged-in users automatically
+  // Redirect logged-in users automatically
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (token) {
-      navigate("/feed"); // or "/home", 
+      navigate("/feed");
     }
   }, [navigate]);
 
-  //  handleSubmit
+  // Handle normal login
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -57,9 +54,7 @@ const Signin = () => {
       const token = res.data.access_token;
       if (!token) throw new Error("No token returned from API");
 
-      //  Trigger AuthContext login
       await login(token);
-
       navigate("/feed", { replace: true });
     } catch (err: any) {
       console.error("Login error:", err);
@@ -69,7 +64,16 @@ const Signin = () => {
     }
   };
 
+  // 🌐 Social login URLs (production)
+  const GOOGLE_LOGIN_URL = "https://api.civ-con.org/auth/google/login";
+  const LINKEDIN_LOGIN_URL = "https://api.civ-con.org/auth/linkedin/login";
 
+  // Social login handler
+  const handleSocialLogin = (provider: "google" | "linkedin") => {
+    const authUrl =
+      provider === "google" ? GOOGLE_LOGIN_URL : LINKEDIN_LOGIN_URL;
+    window.location.href = authUrl; // Redirect to backend OAuth
+  };
 
   return (
     <div className="w-full max-w-md mx-auto px-4 sm:px-6 md:px-0">
@@ -157,21 +161,18 @@ const Signin = () => {
               </Link>
             </div>
 
-                  
             {error && (
-            <p className="text-red-500 text-sm text-center">{error}</p>
+              <p className="text-red-500 text-sm text-center">{error}</p>
             )}
-
 
             {/* Submit Button */}
             <Button
               type="submit"
               disabled={loading}
-                className="w-full shadow-soft text-sm sm:text-base py-2 sm:py-3"
-              >
+              className="w-full shadow-soft text-sm sm:text-base py-2 sm:py-3"
+            >
               {loading ? "Signing in..." : "Sign In"}
             </Button>
-
 
             {/* Sign Up Link */}
             <div className="text-center text-sm sm:text-base">
@@ -201,9 +202,11 @@ const Signin = () => {
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:gap-4 mt-4">
+              {/* Google Login */}
               <Button
                 variant="outline"
                 type="button"
+                onClick={() => handleSocialLogin("google")}
                 className="flex items-center justify-center gap-2 text-sm sm:text-base"
               >
                 <svg
@@ -219,9 +222,11 @@ const Signin = () => {
                 Google
               </Button>
 
+              {/* LinkedIn Login */}
               <Button
                 variant="outline"
                 type="button"
+                onClick={() => handleSocialLogin("linkedin")}
                 className="flex items-center justify-center gap-2 text-sm sm:text-base"
               >
                 <svg
@@ -237,7 +242,6 @@ const Signin = () => {
           </div>
         </CardContent>
       </Card>
- 
     </div>
   );
 };

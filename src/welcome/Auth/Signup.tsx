@@ -15,8 +15,14 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { Link, useNavigate } from "react-router-dom";
-import { Alert, AlertDescription } from "@/components/ui/alert"; // Assuming shadcn Alert
-import { ArrowRight, ArrowLeft, CheckCircle, Camera, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  ArrowRight,
+  ArrowLeft,
+  CheckCircle,
+  Camera,
+  AlertCircle,
+} from "lucide-react";
 
 const Signup = () => {
   const navigate = useNavigate();
@@ -33,6 +39,7 @@ const Signup = () => {
     // Step 1
     firstName: "",
     lastName: "",
+    username: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -81,16 +88,16 @@ const Signup = () => {
     "Sports",
   ];
 
-  // Fetch all districts on mount
+  // Fetch districts on mount
   useEffect(() => {
     const fetchDistricts = async () => {
       try {
         setLoadingDistricts(true);
         const response = await axios.get(
-          "https://civcon.onrender.com/auth/locations/districts"
+          "https://api.civ-con.org/auth/locations/districts"
         );
         setDistricts(response.data || []);
-      } catch (err) {
+      } catch {
         setError("Failed to load districts");
       } finally {
         setLoadingDistricts(false);
@@ -102,29 +109,36 @@ const Signup = () => {
   // Fetch counties when district changes
   useEffect(() => {
     if (!formData.district) {
-      setCounties([]); // Clear counties if no district
+      setCounties([]);
       return;
     }
+
+    const selectedDistrict = districts.find(
+      (d) => d.id.toString() === formData.district
+    );
+
     const fetchCounties = async () => {
       try {
         setLoadingCounties(true);
         const response = await axios.get(
-          `https://civcon.onrender.com/auth/locations/counties/${formData.district}`
+          `https://api.civ-con.org/auth/locations/counties/${formData.district}`
         );
-        setCounties(response.data || []);
-      } catch (err) {
+        const countiesData = response.data || [];
+        setCounties(countiesData);
+      } catch {
         setError("Failed to load counties");
       } finally {
         setLoadingCounties(false);
       }
     };
-    fetchCounties();
-  }, [formData.district]);
 
+    fetchCounties();
+  }, [formData.district, districts]);
+
+  // Handle field updates
   const handleInputChange = useCallback((field: string, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
 
-    // Handle preview for profile image
     if (field === "profileImage" && value) {
       const reader = new FileReader();
       reader.onloadend = () => setPreviewImage(reader.result as string);
@@ -132,6 +146,7 @@ const Signup = () => {
     }
   }, []);
 
+  // Handle interest toggle
   const handleInterestToggle = useCallback((interest: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -141,26 +156,36 @@ const Signup = () => {
     }));
   }, []);
 
+  // Next step validation
   const nextStep = useCallback(() => {
-    // Basic validation (expand as needed)
-    if (currentStep === 1 && (!formData.email || !formData.password)) {
-      setError("Please fill in all fields");
-      return;
+    if (currentStep === 1) {
+      if (
+        !formData.firstName ||
+        !formData.lastName ||
+        !formData.username ||
+        !formData.email ||
+        !formData.password ||
+        !formData.confirmPassword
+      ) {
+        setError("Please fill in all required fields.");
+        return;
+      }
+      if (formData.password !== formData.confirmPassword) {
+        setError("Passwords do not match!");
+        return;
+      }
     }
+
+    setError(null);
     if (currentStep < totalSteps) setCurrentStep(currentStep + 1);
-  }, [currentStep, formData.email, formData.password]);
+  }, [currentStep, formData, totalSteps]);
 
   const prevStep = useCallback(() => {
     if (currentStep > 1) setCurrentStep(currentStep - 1);
   }, [currentStep]);
 
-  // Final submit to backend
+  // Final submit
   const handleSubmit = async () => {
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match!");
-      return;
-    }
-
     if (!formData.agreeToTerms) {
       setError("Please agree to the terms before continuing.");
       return;
@@ -170,15 +195,26 @@ const Signup = () => {
     setError(null);
 
     try {
+      const selectedDistrict = districts.find(
+        (d) => d.id.toString() === formData.district
+      );
+      const selectedCounty = counties.find(
+        (c) => c.id.toString() === formData.county
+      );
+
       const data = new FormData();
       data.append("first_name", formData.firstName);
       data.append("last_name", formData.lastName);
+      data.append("username", formData.username || "");
       data.append("email", formData.email);
       data.append("password", formData.password);
       data.append("confirm_password", formData.confirmPassword);
       data.append("region", formData.region || "");
-      data.append("district_id", formData.district || "");
-      data.append("county_id", formData.county || "");
+
+      // ✅ Append names instead of IDs
+      data.append("district", selectedDistrict?.name || "");
+      data.append("county", selectedCounty?.name || "");
+
       data.append("occupation", formData.occupation || "");
       data.append("bio", formData.bio || "");
       data.append("political_interest", formData.politicalInterest || "");
@@ -191,11 +227,10 @@ const Signup = () => {
         data.append("profile_image", formData.profileImage);
       }
 
-      await axios.post("https://civcon.onrender.com/auth/signup", data, {
+      await axios.post("https://api.civ-con.org/auth/signup", data, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // Silent redirect (no popup)
       navigate("/signin", { replace: true });
     } catch (err: any) {
       console.error("Signup error:", err);
@@ -226,7 +261,7 @@ const Signup = () => {
           </p>
         </div>
 
-        {/* Progress Bar */}
+        {/* Progress */}
         <div className="mb-8">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-medium">
@@ -239,7 +274,7 @@ const Signup = () => {
           <Progress value={progress} className="h-2" />
         </div>
 
-        {/* Error Banner */}
+        {/* Error Alert */}
         {error && (
           <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
@@ -247,6 +282,7 @@ const Signup = () => {
           </Alert>
         )}
 
+        {/* Card */}
         <Card className="shadow-xl border-0 bg-card/95 backdrop-blur">
           <CardHeader className="text-center pb-6">
             <CardTitle className="text-xl">
@@ -284,6 +320,15 @@ const Signup = () => {
                   </div>
                 </div>
 
+                <Label>Username</Label>
+                <Input
+                  value={formData.username}
+                  onChange={(e) =>
+                    handleInputChange("username", e.target.value)
+                  }
+                  placeholder="Choose a username"
+                />
+
                 <Label>Email</Label>
                 <Input
                   type="email"
@@ -296,7 +341,9 @@ const Signup = () => {
                 <Input
                   type="password"
                   value={formData.password}
-                  onChange={(e) => handleInputChange("password", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("password", e.target.value)
+                  }
                   placeholder="Create a strong password"
                 />
 
@@ -430,13 +477,23 @@ const Signup = () => {
                 <div className="text-center">
                   <div className="w-24 h-24 mx-auto mb-4 rounded-full flex items-center justify-center bg-muted overflow-hidden">
                     {previewImage ? (
-                      <img src={previewImage} alt="Profile Preview" className="w-full h-full object-cover" />
+                      <img
+                        src={previewImage}
+                        alt="Profile Preview"
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <Camera className="h-8 w-8 text-muted-foreground" />
                     )}
                   </div>
 
-                  <Button variant="outline" size="sm" onClick={() => document.getElementById("profileImage")?.click()}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      document.getElementById("profileImage")?.click()
+                    }
+                  >
                     {previewImage ? "Change Photo" : "Upload Profile Photo"}
                   </Button>
                   <input
@@ -444,7 +501,10 @@ const Signup = () => {
                     id="profileImage"
                     className="hidden"
                     accept="image/*"
-                    onChange={(e) => e.target.files && handleInputChange("profileImage", e.target.files[0])}
+                    onChange={(e) =>
+                      e.target.files &&
+                      handleInputChange("profileImage", e.target.files[0])
+                    }
                   />
                 </div>
 
@@ -458,7 +518,9 @@ const Signup = () => {
                 <Label>Political Interest</Label>
                 <Select
                   value={formData.politicalInterest}
-                  onValueChange={(v) => handleInputChange("politicalInterest", v)}
+                  onValueChange={(v) =>
+                    handleInputChange("politicalInterest", v)
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select your level" />
@@ -468,7 +530,9 @@ const Signup = () => {
                     <SelectItem value="somewhat-active">
                       Somewhat Active
                     </SelectItem>
-                    <SelectItem value="interested">Interested Observer</SelectItem>
+                    <SelectItem value="interested">
+                      Interested Observer
+                    </SelectItem>
                     <SelectItem value="casual">Casual Interest</SelectItem>
                   </SelectContent>
                 </Select>
@@ -484,7 +548,9 @@ const Signup = () => {
                   <SelectContent>
                     <SelectItem value="citizen">Concerned Citizen</SelectItem>
                     <SelectItem value="leader">Community Leader</SelectItem>
-                    <SelectItem value="official">Government Official</SelectItem>
+                    <SelectItem value="official">
+                      Government Official
+                    </SelectItem>
                     <SelectItem value="student">Student</SelectItem>
                     <SelectItem value="educator">Educator</SelectItem>
                     <SelectItem value="business">Business Owner</SelectItem>
@@ -544,7 +610,9 @@ const Signup = () => {
                   <Label>Privacy Level</Label>
                   <Select
                     value={formData.privacyLevel}
-                    onValueChange={(v) => handleInputChange("privacyLevel", v)}
+                    onValueChange={(v) =>
+                      handleInputChange("privacyLevel", v)
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Choose privacy level" />
@@ -561,7 +629,9 @@ const Signup = () => {
                   <div className="flex items-start space-x-2">
                     <Checkbox
                       checked={formData.agreeToTerms}
-                      onCheckedChange={(c) => handleInputChange("agreeToTerms", c)}
+                      onCheckedChange={(c) =>
+                        handleInputChange("agreeToTerms", c)
+                      }
                     />
                     <Label className="text-sm">
                       I agree to the{" "}
@@ -586,12 +656,20 @@ const Signup = () => {
 
             {/* Navigation Buttons */}
             <div className="flex justify-between pt-6 border-t">
-              <Button variant="outline" onClick={prevStep} disabled={currentStep === 1}>
+              <Button
+                variant="outline"
+                onClick={prevStep}
+                disabled={currentStep === 1}
+              >
                 <ArrowLeft className="h-4 w-4 mr-2" /> Previous
               </Button>
 
               {currentStep < totalSteps ? (
-                <Button onClick={nextStep} className="bg-primary hover:bg-primary/90" disabled={loading}>
+                <Button
+                  onClick={nextStep}
+                  className="bg-primary hover:bg-primary/90"
+                  disabled={loading}
+                >
                   Next <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>
               ) : (
@@ -600,7 +678,9 @@ const Signup = () => {
                   disabled={loading || !formData.agreeToTerms}
                   className="bg-gradient-primary hover:opacity-90"
                 >
-                  {loading ? "Creating..." : (
+                  {loading ? (
+                    "Creating..."
+                  ) : (
                     <>
                       <CheckCircle className="h-4 w-4 mr-2" /> Create Account
                     </>
