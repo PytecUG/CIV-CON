@@ -4,14 +4,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardHeader, CardContent, CardTitle } from "@/components/ui/card";
 import api from "@/api/client";
+import type { AxiosError } from "axios";
 
 const ForgotPassword = () => {
-  const [email, setEmail] = useState("");
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState<string>("");
+  const [message, setMessage] = useState<string>("");
+  const [error, setError] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
     setError("");
@@ -24,18 +25,27 @@ const ForgotPassword = () => {
         { headers: { "Content-Type": "application/json" } }
       );
 
-      setMessage(res.data.message || "Password reset email sent successfully");
-    } catch (err) {
-      console.error("Forgot Password Error:", err.response?.data);
+      setMessage(res.data?.message || "Password reset email sent successfully.");
+    } catch (err: unknown) {
+      console.error("Forgot Password Error:", err);
 
-      const detail = err.response?.data?.detail;
-      if (Array.isArray(detail)) {
-        // FastAPI validation error array
-        setError(detail.map((d) => d.msg).join(", "));
-      } else if (typeof detail === "string") {
-        setError(detail);
+      // Safely narrow down Axios errors
+      if (err && typeof err === "object" && (err as AxiosError).isAxiosError) {
+        const axiosErr = err as AxiosError<{ detail?: string | { msg: string }[] }>;
+        const detail = axiosErr.response?.data?.detail;
+
+        if (Array.isArray(detail)) {
+          // FastAPI validation error array
+          setError(detail.map((d) => d.msg).join(", "));
+        } else if (typeof detail === "string") {
+          setError(detail);
+        } else {
+          setError("An unexpected server error occurred.");
+        }
+      } else if (err instanceof Error) {
+        setError(err.message);
       } else {
-        setError("Something went wrong");
+        setError("Something went wrong. Please try again later.");
       }
     } finally {
       setLoading(false);
@@ -50,6 +60,7 @@ const ForgotPassword = () => {
             Forgot Password
           </CardTitle>
         </CardHeader>
+
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -59,19 +70,27 @@ const ForgotPassword = () => {
                 type="email"
                 placeholder="Enter your registered email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setEmail(e.target.value)
+                }
                 required
               />
             </div>
 
-            {message && <p className="text-green-600 text-sm">{message}</p>}
+            {message && (
+              <p className="text-green-600 text-sm text-center">{message}</p>
+            )}
             {error && (
-              <p className="text-red-500 text-sm">
-                {typeof error === "string" ? error : JSON.stringify(error)}
+              <p className="text-red-500 text-sm text-center">
+                {error}
               </p>
             )}
 
-            <Button type="submit" disabled={loading} className="w-full">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full font-semibold"
+            >
               {loading ? "Sending..." : "Send Reset Link"}
             </Button>
           </form>
@@ -82,4 +101,3 @@ const ForgotPassword = () => {
 };
 
 export default ForgotPassword;
-

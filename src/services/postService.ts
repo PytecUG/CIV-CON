@@ -1,4 +1,7 @@
-import axios, { AxiosError, CancelTokenSource } from "axios";
+
+import type { AxiosError, CancelTokenSource } from "axios";
+import type { AxiosProgressEvent } from "axios";
+
 import { toast } from "sonner";
 
 const API_BASE = "https://civcon.onrender.com";
@@ -94,7 +97,7 @@ export const postService = {
   /**  Create a new post (with optional media) */
   async createPost(
     formData: FormData,
-    onUploadProgress?: (progressEvent: ProgressEvent) => void,
+    onUploadProgress?: (progressEvent: AxiosProgressEvent) => void,
     cancelToken?: CancelTokenSource
   ) {
     try {
