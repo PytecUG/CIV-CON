@@ -26,15 +26,21 @@ import { CreatePost } from "@/components/forms/CreatePost";
 import { cn } from "@/lib/utils";
 import { postService } from "@/services/postService";
 
+//  Strong typing for each sidebar item
+interface SidebarItem {
+  title: string;
+  icon: React.FC<React.SVGProps<SVGSVGElement>>;
+  href?: string;
+  badge?: string | number;
+}
 
-
-const sidebarItems = [
+const sidebarItems: SidebarItem[] = [
   { title: "Home", icon: Home, href: "/feed" },
   { title: "Articles", icon: FileText, href: "/articles" },
   { title: "Topics", icon: GitGraph, href: "/topics" },
   { title: "Groups", icon: Users, href: "/groups" },
   { title: "Post", icon: Compass },
-  { title: "Connect", icon: UserPlus, href: "/People" },
+  { title: "Connect", icon: UserPlus, href: "/people" },
   { title: "Live Discussion", icon: Video, href: "/join-discussions" },
   { title: "Settings", icon: Settings, href: "/settings" },
 ];
@@ -45,7 +51,11 @@ interface CollapsibleSidebarProps {
   className?: string;
 }
 
-export const CollapsibleSidebar = ({ isOpen, onToggle, className }: CollapsibleSidebarProps) => {
+export const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
+  isOpen,
+  onToggle,
+  className,
+}) => {
   const location = useLocation();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -65,7 +75,11 @@ export const CollapsibleSidebar = ({ isOpen, onToggle, className }: CollapsibleS
           onClick={onToggle}
           className="h-8 w-8 hover:bg-accent rounded-md transition-colors"
         >
-          {isOpen ? <ChevronsLeft className="h-4 w-4" /> : <ChevronsRight className="h-4 w-4" />}
+          {isOpen ? (
+            <ChevronsLeft className="h-4 w-4" />
+          ) : (
+            <ChevronsRight className="h-4 w-4" />
+          )}
         </Button>
       </div>
 
@@ -73,11 +87,18 @@ export const CollapsibleSidebar = ({ isOpen, onToggle, className }: CollapsibleS
       <nav className="p-2 xs:p-3 space-y-1.5 flex-1">
         {sidebarItems.map((item) => {
           const Icon = item.icon;
-          const isActive = item.href ? location.pathname === item.href : isModalOpen;
+          const isActive = item.href
+            ? location.pathname === item.href
+            : isModalOpen;
 
+          //  Handle special “Post” modal button
           if (item.title === "Post") {
             return (
-              <Dialog key={item.title} open={isModalOpen} onOpenChange={setIsModalOpen}>
+              <Dialog
+                key={item.title}
+                open={isModalOpen}
+                onOpenChange={setIsModalOpen}
+              >
                 <DialogTrigger asChild>
                   <Button
                     variant="ghost"
@@ -90,7 +111,9 @@ export const CollapsibleSidebar = ({ isOpen, onToggle, className }: CollapsibleS
                     )}
                   >
                     <Icon className="h-5 w-5 flex-shrink-0" />
-                    {isOpen && <span className="ml-3 truncate">{item.title}</span>}
+                    {isOpen && (
+                      <span className="ml-3 truncate">{item.title}</span>
+                    )}
                     {!isOpen && (
                       <div className="absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded-md shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
                         {item.title}
@@ -110,12 +133,13 @@ export const CollapsibleSidebar = ({ isOpen, onToggle, className }: CollapsibleS
             );
           }
 
+          //  Default Navigation Links
           return (
             <NavLink
               key={item.href}
-              to={item.href!}
+              to={item.href || "#"}
               className={cn(
-                "flex items-center justify-start p-3 w-full h-10 rounded-lg transition-all duration-200 group text-sm font-medium",
+                "relative flex items-center justify-start p-3 w-full h-10 rounded-lg transition-all duration-200 group text-sm font-medium",
                 isActive
                   ? "bg-primary text-primary-foreground shadow-md"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent",
@@ -128,7 +152,10 @@ export const CollapsibleSidebar = ({ isOpen, onToggle, className }: CollapsibleS
                 <div className="absolute left-full ml-2 px-2 py-1 bg-popover text-popover-foreground text-sm rounded-md shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-50">
                   {item.title}
                   {item.badge && (
-                    <Badge variant="destructive" className="ml-2 h-4 w-4 p-0 text-xs">
+                    <Badge
+                      variant="destructive"
+                      className="ml-2 h-4 w-4 p-0 text-xs"
+                    >
                       {item.badge}
                     </Badge>
                   )}

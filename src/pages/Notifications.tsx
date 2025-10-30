@@ -54,7 +54,7 @@ const Notifications = () => {
         setNotifications(normalized);
 
         // find unread notifications
-        const unread = normalized.filter((n) => !n.read);
+        const unread = normalized.filter((n: { read: boolean }) => !n.read);
         if (unread.length > 0) {
           // mark all unread as read on backend in parallel
           setMarkingAll(true);

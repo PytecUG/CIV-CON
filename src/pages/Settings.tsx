@@ -11,18 +11,17 @@ import { Separator } from "@/components/ui/separator";
 import {
   Settings as SettingsIcon,
   User,
-  Bell,
   Shield,
-  Globe,
   Trash2,
   Power,
   Upload,
 } from "lucide-react";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
-const API_BASE = "https://civcon.onrender.com";
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://civcon.onrender.com";
 
 const Settings = () => {
   const { token, user, refreshUser, logout } = useAuth();
@@ -38,7 +37,7 @@ const Settings = () => {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
 
-  // ✅ Load user info from backend
+  /** 🟢 Load user info from backend/context */
   useEffect(() => {
     if (user) {
       setFormData({
@@ -47,24 +46,27 @@ const Settings = () => {
         occupation: user.occupation || "",
         bio: user.bio || "",
         region: user.region || "",
-        district_id: user.district_id || "",
-        privacy_level: user.privacy_level || "",
+        district_id: String(user.district_id || ""),
+        privacy_level: user.privacy_level || "public",
       });
     }
   }, [user]);
 
-  // ✅ Handle form field changes
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.id]: e.target.value });
+  /** 🟢 Handle text/textarea input changes */
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { id, value } = e.target;
+    setFormData((prev) => ({ ...prev, [id]: value }));
   };
 
-  // ✅ Profile update
+  /**  Save updated profile info */
   const handleSave = async () => {
     setLoading(true);
     try {
       const form = new FormData();
       Object.entries(formData).forEach(([key, value]) => {
-        if (value) form.append(key, value);
+        if (value !== undefined && value !== null) form.append(key, value);
       });
 
       await axios.put(`${API_BASE}/users/profile`, form, {
@@ -74,17 +76,18 @@ const Settings = () => {
         },
       });
 
-      toast.success("✅ Profile updated successfully!");
-      await refreshUser();
-    } catch (err: any) {
-      console.error(err);
-      toast.error("❌ Failed to update profile.");
+      toast.success(" Profile updated successfully!");
+      await refreshUser?.();
+    } catch (error) {
+      const err = error as AxiosError<{ detail?: string }>;
+      console.error("Error updating profile:", err.response?.data || err.message);
+      toast.error(err.response?.data?.detail || " Failed to update profile.");
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Profile image upload
+  /** 🟢 Profile image upload */
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -93,36 +96,42 @@ const Settings = () => {
     try {
       const form = new FormData();
       form.append("profile_image", file);
+
       await axios.put(`${API_BASE}/users/profile`, form, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
       });
+
       toast.success("✅ Profile photo updated!");
-      await refreshUser();
-    } catch (err) {
+      await refreshUser?.();
+    } catch (error) {
+      const err = error as AxiosError;
+      console.error("Error uploading image:", err.message);
       toast.error("❌ Image upload failed.");
     } finally {
       setUploading(false);
     }
   };
 
-  // ✅ Deactivate account
+  /** 🟡 Deactivate account */
   const handleDeactivate = async () => {
     if (!confirm("Are you sure you want to deactivate your account?")) return;
     try {
-      await axios.patch(`${API_BASE}/users/deactivate`, {}, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await axios.patch(
+        `${API_BASE}/users/deactivate`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
       toast.info("🟡 Account deactivated. You’ll be logged out.");
-      logout();
-    } catch (err) {
+      logout?.();
+    } catch (error) {
       toast.error("❌ Failed to deactivate account.");
     }
   };
 
-  // ✅ Delete account
+  /** 🔴 Delete account */
   const handleDelete = async () => {
     if (!confirm("⚠️ This will permanently delete your account. Continue?")) return;
     try {
@@ -130,8 +139,8 @@ const Settings = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
       toast.success("💀 Account deleted successfully.");
-      logout();
-    } catch (err) {
+      logout?.();
+    } catch (error) {
       toast.error("❌ Failed to delete account.");
     }
   };
@@ -145,7 +154,7 @@ const Settings = () => {
         </div>
 
         <div className="grid gap-6">
-          {/* Profile Settings */}
+          {/* 🧑‍💼 Profile Settings */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -161,15 +170,17 @@ const Settings = () => {
                     alt="Profile"
                   />
                   <AvatarFallback>
-                    {user?.first_name?.[0]}
-                    {user?.last_name?.[0]}
+                    {user?.first_name?.[0] ?? ""}
+                    {user?.last_name?.[0] ?? ""}
                   </AvatarFallback>
                 </Avatar>
                 <div>
                   <Button
                     variant="outline"
                     disabled={uploading}
-                    onClick={() => document.getElementById("fileUpload")?.click()}
+                    onClick={() =>
+                      document.getElementById("fileUpload")?.click()
+                    }
                   >
                     <Upload className="h-4 w-4 mr-2" />
                     {uploading ? "Uploading..." : "Change Photo"}
@@ -184,28 +195,49 @@ const Settings = () => {
                 </div>
               </div>
 
+              {/* Fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="first_name">First Name</Label>
-                  <Input id="first_name" value={formData.first_name} onChange={handleChange} />
+                  <Input
+                    id="first_name"
+                    value={formData.first_name}
+                    onChange={handleChange}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="last_name">Last Name</Label>
-                  <Input id="last_name" value={formData.last_name} onChange={handleChange} />
+                  <Input
+                    id="last_name"
+                    value={formData.last_name}
+                    onChange={handleChange}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="occupation">Occupation</Label>
-                  <Input id="occupation" value={formData.occupation} onChange={handleChange} />
+                  <Input
+                    id="occupation"
+                    value={formData.occupation}
+                    onChange={handleChange}
+                  />
                 </div>
                 <div>
                   <Label htmlFor="region">Region</Label>
-                  <Input id="region" value={formData.region} onChange={handleChange} />
+                  <Input
+                    id="region"
+                    value={formData.region}
+                    onChange={handleChange}
+                  />
                 </div>
               </div>
 
               <div>
                 <Label htmlFor="bio">Bio</Label>
-                <Textarea id="bio" value={formData.bio} onChange={handleChange} />
+                <Textarea
+                  id="bio"
+                  value={formData.bio}
+                  onChange={handleChange}
+                />
               </div>
 
               <Button onClick={handleSave} disabled={loading}>
@@ -214,7 +246,7 @@ const Settings = () => {
             </CardContent>
           </Card>
 
-          {/* Privacy Settings */}
+          {/* 🔒 Privacy Settings */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -252,9 +284,9 @@ const Settings = () => {
                           ? "🔒 Profile is now private."
                           : "🌍 Profile is now public."
                       );
-                      await refreshUser();
-                    } catch (err) {
-                      toast.error(" Failed to update privacy setting.");
+                      await refreshUser?.();
+                    } catch (error) {
+                      toast.error("❌ Failed to update privacy setting.");
                     }
                   }}
                 />
@@ -262,8 +294,7 @@ const Settings = () => {
             </CardContent>
           </Card>
 
-
-          {/* Danger Zone */}
+          {/* 🚨 Danger Zone */}
           <Card>
             <CardHeader>
               <CardTitle className="text-destructive">Danger Zone</CardTitle>

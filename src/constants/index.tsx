@@ -1,6 +1,22 @@
-import { FaComments, FaUsers, FaBullhorn, FaHeadset , FaUserFriends, FaPenNib } from "react-icons/fa";
-import { Home, MessageSquare, Hash, User, Settings, FileText, TrendingUp, Users } from 'lucide-react';
+import {
+  FaComments,
+  FaUser,
+  FaBullhorn,
+  FaHeadphones,
+  FaUsersCog,
+  FaPen,
+} from "react-icons/fa";
 
+import {
+  Home,
+  MessageSquare,
+  Hash,
+  User as LucideUser,
+  Settings,
+  FileText,
+  TrendingUp,
+  Users,
+} from "lucide-react";
 
 export const features = [
   {
@@ -29,11 +45,10 @@ export const features = [
 
 export const details = [
   { id: "0", icon: FaComments, title: "Engage in Public Discussions" },
-  { id: "1", icon: FaUsers, title: "Connect with Fellow Citizens" },
+  { id: "1", icon: FaUser, title: "Connect with Fellow Citizens" },
   { id: "2", icon: FaBullhorn, title: "Share Opinions with Leaders" },
-  { id: "3", icon: FaHeadset, title: "Access News & Updates" },
+  { id: "3", icon: FaHeadphones, title: "Access News & Updates" },
 ];
-
 
 export const plans = [
   {
@@ -48,8 +63,8 @@ export const plans = [
       "Follow leaders & journalists",
       "Basic community profile",
     ],
-    icon: FaUserFriends,
-    logo: null, // not needed if using react-icons
+    icon: FaUsersCog,
+    logo: null,
   },
   {
     id: "1",
@@ -63,7 +78,7 @@ export const plans = [
       "Verified journalist badge",
       "Priority support",
     ],
-    icon: FaPenNib,
+    icon: FaPen,
     logo: null,
   },
   {
@@ -78,7 +93,7 @@ export const plans = [
       "Analytics & sentiment insights",
       "Verified leader badge",
     ],
-    icon: FaUsers,
+    icon: FaUser,
     logo: null,
   },
 ];
@@ -134,7 +149,6 @@ export const testimonials = [
   },
 ];
 
-
 export const sidebarItems = [
   {
     title: "Feed",
@@ -168,7 +182,7 @@ export const sidebarItems = [
   },
   {
     title: "Profile",
-    icon: User,
+    icon: LucideUser,
     href: "/profile",
   },
   {

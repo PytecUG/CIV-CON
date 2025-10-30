@@ -2,20 +2,10 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
+import type { User } from "@/types/user";
 
 const API_BASE = "https://civcon.onrender.com";
 
-/* Types */
-interface User {
-  id: number;
-  first_name: string;
-  last_name: string;
-  email: string;
-  role: string;
-  region?: string;
-  district_id?: string;
-  profile_image?: string;
-}
 
 interface AuthContextType {
   user: User | null;
@@ -25,6 +15,7 @@ interface AuthContextType {
   logout: (silent?: boolean) => void;
   refreshUser: () => Promise<void>;
 }
+
 
 /* Context */
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

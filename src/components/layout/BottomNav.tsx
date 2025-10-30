@@ -1,14 +1,18 @@
-import { 
-  Home, 
-  MessageSquare, 
-  User, 
-  Settings, 
-  FileText, 
-  GitGraph, 
-  Users 
+import {
+  Home,
+  MessageSquare,
+  User,
+  Settings,
+  FileText,
+  GitGraph,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocation, Link } from "react-router-dom";
+
+interface BottomNavProps {
+  className?: string;
+}
 
 const bottomNavItems = [
   { title: "Feed", icon: Home, href: "/feed" },
@@ -20,11 +24,16 @@ const bottomNavItems = [
   { title: "Settings", icon: Settings, href: "/settings" },
 ];
 
-export const BottomNav = () => {
+export const BottomNav: React.FC<BottomNavProps> = ({ className }) => {
   const location = useLocation();
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t md:hidden">
+    <div
+      className={cn(
+        "fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur border-t md:hidden",
+        className
+      )}
+    >
       <nav className="flex items-center h-16 px-2 overflow-x-auto no-scrollbar">
         {bottomNavItems.map((item) => {
           const isActive = location.pathname === item.href;
@@ -42,7 +51,6 @@ export const BottomNav = () => {
               )}
             >
               <Icon className="h-5 w-5" />
-              {/* hide labels on very small screens */}
               <span className="text-xs font-medium truncate hidden xs:block">
                 {item.title}
               </span>

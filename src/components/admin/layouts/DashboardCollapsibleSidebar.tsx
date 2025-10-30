@@ -43,7 +43,7 @@ export const DashboardCollapsibleSidebar = ({
     onToggle?.(isOpen);
   }, [isOpen, onToggle]);
 
-  const handleToggle = () => setIsOpen((prev) => !prev);
+  const handleToggle = () => setIsOpen((prev: boolean) => !prev);
 
   return (
     <div

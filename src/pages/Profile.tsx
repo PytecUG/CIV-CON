@@ -9,22 +9,25 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { toast } from "sonner";
 
 export default function Profile() {
   const { user, refreshUser, token } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({
-    first_name: user?.first_name || "",
-    last_name: user?.last_name || "",
-    occupation: user?.occupation || "",
-    bio: user?.bio || "",
-  });
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
+
+  const [formData, setFormData] = useState({
+    first_name: user?.first_name ?? "",
+    last_name: user?.last_name ?? "",
+    occupation: user?.occupation ?? "",
+    bio: user?.bio ?? "",
+  });
+
   const navigate = useNavigate();
 
+  // 🔒 Handle case when user is not logged in
   if (!user) {
     return (
       <Layout>
@@ -38,17 +41,22 @@ export default function Profile() {
     );
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  /** 🟢 Handle text and textarea changes */
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  /** 🟢 Handle file input change */
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      setSelectedImage(e.target.files[0]);
-    }
+    const file = e.target.files?.[0];
+    if (file) setSelectedImage(file);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  /** 🟢 Handle form submission */
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
 
@@ -60,19 +68,20 @@ export default function Profile() {
       form.append("bio", formData.bio);
       if (selectedImage) form.append("profile_image", selectedImage);
 
-      const res = await axios.put("https://civcon.onrender.com/users/profile", form, {
+      await axios.put(`${import.meta.env.VITE_API_BASE_URL || "https://civcon.onrender.com"}/users/profile`, form, {
         headers: {
-          "Authorization": `Bearer ${token}`,
+          Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",
         },
       });
 
       toast.success("✅ Profile updated successfully!");
-      await refreshUser();
+      await refreshUser?.();
       setIsEditing(false);
-    } catch (err) {
-      console.error(err);
-      toast.error("❌ Failed to update profile");
+    } catch (error: unknown) {
+      const err = error as AxiosError<{ detail?: string }>;
+      console.error("Profile update failed:", err.response?.data || err.message);
+      toast.error(err.response?.data?.detail || "❌ Failed to update profile.");
     } finally {
       setLoading(false);
     }
@@ -88,15 +97,14 @@ export default function Profile() {
               <Avatar className="h-24 w-24 mb-4">
                 <AvatarImage
                   src={user.profile_image || "/api/placeholder/96/96"}
-                  alt={user.first_name}
+                  alt={user.first_name || "User"}
                 />
                 <AvatarFallback className="bg-gray-200 text-gray-600 text-xl">
-                  {user.first_name?.[0]}
-                  {user.last_name?.[0]}
+                  {user.first_name?.[0] ?? ""}
+                  {user.last_name?.[0] ?? ""}
                 </AvatarFallback>
               </Avatar>
 
-              {/* Change Photo */}
               <Button
                 variant="secondary"
                 size="sm"
@@ -133,12 +141,16 @@ export default function Profile() {
 
               <div>
                 <p className="text-sm text-muted-foreground">District</p>
-                <p className="font-medium">{user.district_id || "Not specified"}</p>
+                <p className="font-medium">
+                  {user.district_id || "Not specified"}
+                </p>
               </div>
 
               <div>
                 <p className="text-sm text-muted-foreground">Occupation</p>
-                <p className="font-medium">{user.occupation || "Not specified"}</p>
+                <p className="font-medium">
+                  {user.occupation || "Not specified"}
+                </p>
               </div>
 
               <div>
@@ -185,7 +197,6 @@ export default function Profile() {
               className="min-h-[80px]"
             />
 
-            {/* Profile Image Upload */}
             <div>
               <p className="text-sm text-muted-foreground mb-1">Profile Image</p>
               <Input type="file" accept="image/*" onChange={handleFileChange} />

@@ -16,6 +16,7 @@ import {
   disconnectLiveFeedSocket,
   sendLiveFeedMessage,
 } from "@/services/liveFeedSocket";
+import type { User } from "@/types/user";
 
 interface LiveMessage {
   id: string | number;
@@ -43,7 +44,7 @@ export default function LiveDiscussion() {
   const [connected, setConnected] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  /** 🎯 Fetch live feed details */
+  /**  Fetch live feed details */
   useEffect(() => {
     const fetchFeed = async () => {
       try {
@@ -59,7 +60,7 @@ export default function LiveDiscussion() {
     if (feed_id) fetchFeed();
   }, [feed_id]);
 
-  /** 💬 Fetch past chat messages */
+  /**  Fetch past chat messages */
   const fetchMessages = useCallback(async () => {
     try {
       const res = await liveFeedService.getMessages(Number(feed_id));
@@ -69,7 +70,7 @@ export default function LiveDiscussion() {
     }
   }, [feed_id]);
 
-  /** 🔴 WebSocket connection with reconnection support */
+  /**  WebSocket connection with reconnection support */
   useEffect(() => {
     if (!feed_id || !token) return;
 
@@ -128,7 +129,7 @@ export default function LiveDiscussion() {
     scrollToBottom();
   };
 
-  /** ❤️ Like message (local only) */
+  /**  Like message (local only) */
   const handleLikeMessage = (messageId: string | number) => {
     setMessages((msgs) =>
       msgs.map((msg) =>
@@ -137,7 +138,7 @@ export default function LiveDiscussion() {
     );
   };
 
-  /** 🎨 Role badge color */
+  /**  Role badge color */
   const getRoleColor = (role?: string) => {
     switch (role) {
       case "journalist":

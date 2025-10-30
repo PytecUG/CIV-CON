@@ -1,11 +1,26 @@
+import React from "react";
 import clsx from "clsx";
 
-const TestimonialItem = ({ item, containerClassName }) => {
+interface TestimonialItemProps {
+  item: {
+    id?: number;
+    name: string;
+    role: string;
+    comment: string;
+    image?: string;
+  };
+  containerClassName?: string;
+}
+
+const TestimonialItem: React.FC<TestimonialItemProps> = ({
+  item,
+  containerClassName = "",
+}) => {
   return (
     <div
       className={clsx(
         "relative px-14 pb-14 pt-11 after:absolute after:bottom-0 after:right-0 after:h-0.5 after:w-screen after:bg-s2 after:content-[''] max-md:px-0 max-md:pt-11 after:max-md:-right-4",
-        containerClassName,
+        containerClassName
       )}
     >
       <blockquote className="h6 mb-8 text-p4">{item.comment}</blockquote>
@@ -13,7 +28,7 @@ const TestimonialItem = ({ item, containerClassName }) => {
       <div className="flex items-center max-xl:-mr-8">
         <div className="mr-4 size-20 shrink-0 rounded-full border-2 border-s2 p-1.5">
           <img
-            src={"./images/avatar-default.png"}
+            src={item.image || "./images/avatar-default.png"}
             alt={item.name}
             className="size-full object-cover"
           />
@@ -26,4 +41,5 @@ const TestimonialItem = ({ item, containerClassName }) => {
     </div>
   );
 };
+
 export default TestimonialItem;
