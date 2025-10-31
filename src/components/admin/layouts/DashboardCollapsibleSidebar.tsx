@@ -3,28 +3,34 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
   Home,
   Users,
-  GitGraph,
   BarChart2,
   Shield,
+  UserPlus,
+  MessageSquareMore,
   Settings,
+  CircleDollarSign,
   ChevronsLeft,
   ChevronsRight,
+  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
 const sidebarItems = [
   { title: "Dashboard", icon: Home, href: "/admin/dashboard" },
-  { title: "Users", icon: Users, href: "/admin/users" },
-  { title: "Groups", icon: GitGraph, href: "/admin/groups" },
+  { title: "Users", icon: UserPlus, href: "/admin/users" },
+  { title: "Communication", icon: MessageSquareMore, href: "/admin/communication" },
+  { title: "Groups", icon: Users, href: "/admin/groups" },
   { title: "Analytics", icon: BarChart2, href: "/admin/analytics" },
   { title: "Content Moderation", icon: Shield, href: "/admin/moderation" },
+  { title: "Subscriptions", icon: CircleDollarSign, href: "/admin/subscriptions" },
   { title: "Settings", icon: Settings, href: "/admin/settings" },
 ];
 
 interface DashboardCollapsibleSidebarProps {
   className?: string;
-  onToggle?: (isOpen: boolean) => void; // 🔹 new prop to notify parent
+  onToggle?: (isOpen: boolean) => void;
 }
 
 export const DashboardCollapsibleSidebar = ({
@@ -37,7 +43,6 @@ export const DashboardCollapsibleSidebar = ({
     return savedState !== null ? JSON.parse(savedState) : true;
   });
 
-  // 🔹 Sync sidebar state with localStorage + notify parent
   useEffect(() => {
     localStorage.setItem("sidebarIsOpen", JSON.stringify(isOpen));
     onToggle?.(isOpen);
@@ -69,7 +74,7 @@ export const DashboardCollapsibleSidebar = ({
         </Button>
       </div>
 
-      {/* Navigation Items */}
+      {/* Navigation */}
       <nav className="p-2 xs:p-3 space-y-1.5 flex-1">
         {sidebarItems.map((item) => {
           const Icon = item.icon;
@@ -80,7 +85,7 @@ export const DashboardCollapsibleSidebar = ({
               key={item.href}
               to={item.href}
               className={cn(
-                "flex items-center justify-start p-3 w-full h-10 rounded-lg transition-all duration-200 group text-sm font-medium",
+                "relative flex items-center justify-start p-3 w-full h-10 rounded-lg transition-all duration-200 group text-sm font-medium",
                 isActive
                   ? "bg-primary text-primary-foreground shadow-md"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent",
@@ -100,6 +105,28 @@ export const DashboardCollapsibleSidebar = ({
           );
         })}
       </nav>
+
+      {/* 🔹 Logout Section at Bottom */}
+      <div className="p-3 border-t mt-auto">
+        <NavLink to="/" className="w-full">
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "flex items-center justify-between w-full space-x-2",
+              !isOpen && "justify-center"
+            )}
+          >
+            {isOpen && (
+              <span className="text-sm font-medium">Log Out</span>
+            )}
+            <Avatar className="h-8 w-8">
+              <AvatarImage src="/api/placeholder/32/32" alt="User" />
+              <AvatarFallback className="bg-gray-200 text-gray-600">JD</AvatarFallback>
+            </Avatar>
+          </Button>
+        </NavLink>
+      </div>
     </div>
   );
 };

@@ -5,12 +5,21 @@ import {
   Users2,
   MapPin,
   MessageSquare,
-  TrendingUp,
   ArrowUp,
   ArrowDown,
   Minus,
+  Eye,
+  DollarSign,
+  CreditCard,
+  TrendingUp,
+  BarChart3,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -19,7 +28,19 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
 
 interface AnalyticsData {
   totalLeaders: { value: number; change: number };
@@ -32,9 +53,13 @@ interface AnalyticsData {
   activeDistricts: { value: number; change: number };
   totalGroups: { value: number; change: number };
   trendingTopics: { name: string; posts: number }[];
+  totalSubscriptions: { value: number; change: number };
+  revenueGenerated: { value: number; change: number };
+  subscriptionPlans: { plan: string; subscribers: number; revenue: number }[];
 }
 
 export const Dashboard = () => {
+  // 🔹 Analytics data
   const [analytics, setAnalytics] = useState<AnalyticsData>({
     totalLeaders: { value: 0, change: 0 },
     totalJournalists: { value: 0, change: 0 },
@@ -46,27 +71,36 @@ export const Dashboard = () => {
     activeDistricts: { value: 0, change: 0 },
     totalGroups: { value: 0, change: 0 },
     trendingTopics: [],
+    totalSubscriptions: { value: 0, change: 0 },
+    revenueGenerated: { value: 0, change: 0 },
+    subscriptionPlans: [],
   });
 
-  // Placeholder API fetch
   useEffect(() => {
     const fetchAnalytics = async () => {
       const data: AnalyticsData = {
-        totalLeaders: { value: 150, change: 5 }, // +5%
-        totalJournalists: { value: 80, change: 0 }, // 0%
-        totalCitizens: { value: 1200, change: 10 }, // +10%
-        totalDistricts: { value: 15, change: -2 }, // -2%
-        postsToday: { value: 245, change: 15 }, // +15%
-        articlesToday: { value: 32, change: 8 }, // +8%
-        activeUsers: { value: 850, change: 12 }, // +12%
-        activeDistricts: { value: 12, change: -5 }, // -5%
-        totalGroups: { value: 45, change: 3 }, // +3%
+        totalLeaders: { value: 150, change: 5 },
+        totalJournalists: { value: 80, change: 0 },
+        totalCitizens: { value: 1200, change: 10 },
+        totalDistricts: { value: 15, change: -2 },
+        postsToday: { value: 245, change: 15 },
+        articlesToday: { value: 32, change: 8 },
+        activeUsers: { value: 850, change: 12 },
+        activeDistricts: { value: 12, change: -5 },
+        totalGroups: { value: 45, change: 3 },
         trendingTopics: [
           { name: "Community Development", posts: 120 },
           { name: "Education Reform", posts: 95 },
           { name: "Health Awareness", posts: 80 },
           { name: "Local Governance", posts: 65 },
           { name: "Economic Growth", posts: 50 },
+        ],
+        totalSubscriptions: { value: 230, change: 8 },
+        revenueGenerated: { value: 1250000, change: 12 }, // In UGX
+        subscriptionPlans: [
+          { plan: "Basic Leader", subscribers: 120, revenue: 600000 },
+          { plan: "Premium Leader", subscribers: 80, revenue: 480000 },
+          { plan: "Enterprise", subscribers: 30, revenue: 170000 },
         ],
       };
       setAnalytics(data);
@@ -75,205 +109,353 @@ export const Dashboard = () => {
   }, []);
 
   const getIndicator = (change: number) => {
-    if (change > 0) {
-      return <ArrowUp className="h-4 w-4 text-yellow-500" />;
-    } else if (change < 0) {
+    if (change > 0)
+      return <ArrowUp className="h-4 w-4 text-green-500" />;
+    if (change < 0)
       return <ArrowDown className="h-4 w-4 text-red-500" />;
-    } else {
-      return <Minus className="h-4 w-4 text-blue-500" />;
+    return <Minus className="h-4 w-4 text-blue-500" />;
+  };
+
+  // 🔹 Chart Data
+  const [postGrowth] = useState([
+    { name: "Jan", posts: 15 },
+    { name: "Feb", posts: 25 },
+    { name: "Mar", posts: 20 },
+    { name: "Apr", posts: 28 },
+    { name: "May", posts: 18 },
+    { name: "Jun", posts: 30 },
+  ]);
+
+  const [commentTrend] = useState([
+    { day: 1, approved: 5, pending: 8, spam: 2 },
+    { day: 5, approved: 25, pending: 15, spam: 10 },
+    { day: 10, approved: 30, pending: 12, spam: 8 },
+    { day: 15, approved: 20, pending: 25, spam: 5 },
+  ]);
+
+  const [revenueTrend] = useState([
+    { month: "Jan", revenue: 80000 },
+    { month: "Feb", revenue: 95000 },
+    { month: "Mar", revenue: 120000 },
+    { month: "Apr", revenue: 110000 },
+    { month: "May", revenue: 140000 },
+    { month: "Jun", revenue: 150000 },
+  ]);
+
+  const [latestPosts] = useState([
+    { title: "Road Infrastructure in Kampala", status: "Published", date: "Oct 30, 2025" },
+    { title: "Youth Employment in Gulu", status: "Draft", date: "Oct 29, 2025" },
+    { title: "Healthcare Access in Mbale", status: "Published", date: "Oct 28, 2025" },
+    { title: "Education Reform Proposal", status: "Published", date: "Oct 27, 2025" },
+  ]);
+
+  const [recentComments] = useState([
+    { author: "Aisha N.", comment: "This proposal could transform our district!", date: "Oct 30, 2025" },
+    { author: "James O.", comment: "Need more data on budget allocation.", date: "Oct 30, 2025" },
+    { author: "Sarah M.", comment: "Great discussion on local governance.", date: "Oct 29, 2025" },
+    { author: "David K.", comment: "How can citizens get involved?", date: "Oct 29, 2025" },
+  ]);
+
+  const [recentSubscriptions] = useState([
+    { user: "Hon. Jane Doe", plan: "Premium Leader", date: "Oct 30, 2025", amount: 50000 },
+    { user: "John Reporter", plan: "Basic Leader", date: "Oct 29, 2025", amount: 25000 },
+    { user: "MP Uganda", plan: "Enterprise", date: "Oct 28, 2025", amount: 200000 },
+    { user: "Local Leader", plan: "Premium Leader", date: "Oct 27, 2025", amount: 50000 },
+  ]);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Published":
+        return "text-green-600";
+      case "Draft":
+        return "text-yellow-600";
+      default:
+        return "text-gray-600";
     }
   };
 
+  const COLORS = ["#10b981", "#059669", "#047857", "#065f46"];
+
   return (
-    <div className="container py-4 xs:py-6 sm:py-8">
-      <h1 className="text-xl xs:text-2xl sm:text-3xl font-bold text-primary mb-4 xs:mb-6">
-        Admin Dashboard
+    <div className="container py-6 space-y-6 min-h-screen">
+      <h1 className="text-2xl sm:text-3xl font-bold text-primary">
+        CIVCON Admin Dashboard
       </h1>
-      <p className="text-sm xs:text-base text-muted-foreground mb-6 xs:mb-8">
-        Real-time insights into platform performance and engagement.
+      <p className="text-muted-foreground">
+        Real-time insights into platform performance, engagement, and revenue for Uganda's civic platform.
       </p>
 
-      {/* Four Small Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 xs:gap-6 mb-6 xs:mb-8">
-        <Card className="h-24 shadow-soft hover:scale-105 transition-all duration-300 bg-gradient-to-br from-primary/10 to-background rounded-lg">
-          <CardContent className="flex items-center space-x-3 pt-4">
-            <Users className="h-6 w-6 text-primary" />
+      {/* 🔹 Analytics Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card className="shadow-soft bg-gradient-to-br from-green-500/10 to-background hover:scale-105 transition-all duration-300">
+          <CardContent className="flex items-center gap-3 pt-4">
+            <Users className="h-6 w-6 text-green-500" />
             <div>
-              <p className="text-sm xs:text-base font-semibold text-primary">Leaders</p>
-              <p className="text-lg xs:text-xl font-bold">{analytics.totalLeaders.value}</p>
-              <p className="text-xs text-muted-foreground flex items-center">
-                {getIndicator(analytics.totalLeaders.change)} {Math.abs(analytics.totalLeaders.change)}% this week
+              <p className="font-semibold text-green-600">Leaders</p>
+              <p className="text-xl font-bold">{analytics.totalLeaders.value}</p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                {getIndicator(analytics.totalLeaders.change)}
+                {Math.abs(analytics.totalLeaders.change)}% this week
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="h-24 shadow-soft hover:scale-105 transition-all duration-300 bg-gradient-to-br from-primary/10 to-background rounded-lg">
-          <CardContent className="flex items-center space-x-3 pt-4">
-            <Newspaper className="h-6 w-6 text-primary" />
+        <Card className="shadow-soft bg-gradient-to-br from-green-500/10 to-background hover:scale-105 transition-all duration-300">
+          <CardContent className="flex items-center gap-3 pt-4">
+            <Newspaper className="h-6 w-6 text-green-500" />
             <div>
-              <p className="text-sm xs:text-base font-semibold text-primary">Journalists</p>
-              <p className="text-lg xs:text-xl font-bold">{analytics.totalJournalists.value}</p>
-              <p className="text-xs text-muted-foreground flex items-center">
-                {getIndicator(analytics.totalJournalists.change)} {Math.abs(analytics.totalJournalists.change)}% this week
+              <p className="font-semibold text-green-600">Journalists</p>
+              <p className="text-xl font-bold">{analytics.totalJournalists.value}</p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                {getIndicator(analytics.totalJournalists.change)}
+                {Math.abs(analytics.totalJournalists.change)}% this week
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="h-24 shadow-soft hover:scale-105 transition-all duration-300 bg-gradient-to-br from-primary/10 to-background rounded-lg">
-          <CardContent className="flex items-center space-x-3 pt-4">
-            <Users2 className="h-6 w-6 text-primary" />
+        <Card className="shadow-soft bg-gradient-to-br from-green-500/10 to-background hover:scale-105 transition-all duration-300">
+          <CardContent className="flex items-center gap-3 pt-4">
+            <Users2 className="h-6 w-6 text-green-500" />
             <div>
-              <p className="text-sm xs:text-base font-semibold text-primary">Citizens</p>
-              <p className="text-lg xs:text-xl font-bold">{analytics.totalCitizens.value}</p>
-              <p className="text-xs text-muted-foreground flex items-center">
-                {getIndicator(analytics.totalCitizens.change)} {Math.abs(analytics.totalCitizens.change)}% this week
+              <p className="font-semibold text-green-600">Citizens</p>
+              <p className="text-xl font-bold">{analytics.totalCitizens.value}</p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                {getIndicator(analytics.totalCitizens.change)}
+                {Math.abs(analytics.totalCitizens.change)}% this week
               </p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="h-24 shadow-soft hover:scale-105 transition-all duration-300 bg-gradient-to-br from-primary/10 to-background rounded-lg">
-          <CardContent className="flex items-center space-x-3 pt-4">
-            <MapPin className="h-6 w-6 text-primary" />
+        <Card className="shadow-soft bg-gradient-to-br from-green-500/10 to-background hover:scale-105 transition-all duration-300">
+          <CardContent className="flex items-center gap-3 pt-4">
+            <MapPin className="h-6 w-6 text-green-500" />
             <div>
-              <p className="text-sm xs:text-base font-semibold text-primary">Districts</p>
-              <p className="text-lg xs:text-xl font-bold">{analytics.totalDistricts.value}</p>
-              <p className="text-xs text-muted-foreground flex items-center">
-                {getIndicator(analytics.totalDistricts.change)} {Math.abs(analytics.totalDistricts.change)}% this week
+              <p className="font-semibold text-green-600">Districts</p>
+              <p className="text-xl font-bold">{analytics.totalDistricts.value}</p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                {getIndicator(analytics.totalDistricts.change)}
+                {Math.abs(analytics.totalDistricts.change)}% this week
               </p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Two Large Cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 xs:gap-6 mb-6 xs:mb-8">
-        {/* Content Activity Card */}
-        <Card className="shadow-soft hover:shadow-lg transition-all duration-300 bg-card rounded-lg">
-          <CardHeader className="flex items-center space-x-2">
-            <MessageSquare className="h-5 w-5 text-primary" />
-            <CardTitle className="text-sm xs:text-base">Content Activity</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:space-x-6">
-              <div className="flex-1">
-                <p className="text-sm xs:text-base font-semibold text-primary">Posts Today</p>
-                <p className="text-lg xs:text-xl font-bold">{analytics.postsToday.value}</p>
-                <p className="text-xs xs:text-sm text-muted-foreground flex items-center">
-                  {getIndicator(analytics.postsToday.change)} {Math.abs(analytics.postsToday.change)}% from yesterday
-                </p>
-                <div className="mt-2 h-2 bg-muted rounded-full">
-                  <div
-                    className="h-full bg-primary rounded-full"
-                    style={{ width: `${(analytics.postsToday.value / 300) * 100}%` }}
-                  />
-                </div>
-              </div>
-              <div className="flex-1 mt-4 sm:mt-0">
-                <p className="text-sm xs:text-base font-semibold text-primary">Articles Today</p>
-                <p className="text-lg xs:text-xl font-bold">{analytics.articlesToday.value}</p>
-                <p className="text-xs xs:text-sm text-muted-foreground flex items-center">
-                  {getIndicator(analytics.articlesToday.change)} {Math.abs(analytics.articlesToday.change)}% from yesterday
-                </p>
-                <div className="mt-2 h-2 bg-muted rounded-full">
-                  <div
-                    className="h-full bg-primary rounded-full"
-                    style={{ width: `${(analytics.articlesToday.value / 50) * 100}%` }}
-                  />
-                </div>
-              </div>
+      {/* 🔹 Revenue and Subscription Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4">
+        <Card className="shadow-soft bg-gradient-to-br from-green-500/10 to-background hover:scale-105 transition-all duration-300">
+          <CardContent className="flex items-center gap-3 pt-4">
+            <CreditCard className="h-6 w-6 text-green-500" />
+            <div>
+              <p className="font-semibold text-green-600">Total Subscriptions</p>
+              <p className="text-xl font-bold">{analytics.totalSubscriptions.value}</p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                {getIndicator(analytics.totalSubscriptions.change)}
+                {Math.abs(analytics.totalSubscriptions.change)}% this week
+              </p>
             </div>
           </CardContent>
         </Card>
 
-        {/* Community Engagement Card */}
-        <Card className="shadow-soft hover:shadow-lg transition-all duration-300 bg-card rounded-lg">
-          <CardHeader className="flex items-center space-x-2">
-            <Users className="h-5 w-5 text-primary" />
-            <CardTitle className="text-sm xs:text-base">Community Engagement</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:space-x-6">
-              <div className="flex-1">
-                <p className="text-sm xs:text-base font-semibold text-primary">Active Users</p>
-                <p className="text-lg xs:text-xl font-bold">{analytics.activeUsers.value}</p>
-                <p className="text-xs xs:text-sm text-muted-foreground flex items-center">
-                  {getIndicator(analytics.activeUsers.change)} {Math.abs(analytics.activeUsers.change)}% today
-                </p>
-                <div className="mt-2 h-2 bg-muted rounded-full">
-                  <div
-                    className="h-full bg-primary rounded-full"
-                    style={{ width: `${(analytics.activeUsers.value / 1000) * 100}%` }}
-                  />
-                </div>
-              </div>
-              <div className="flex-1 mt-4 sm:mt-0">
-                <p className="text-sm xs:text-base font-semibold text-primary">Active Districts</p>
-                <p className="text-lg xs:text-xl font-bold">{analytics.activeDistricts.value}</p>
-                <p className="text-xs xs:text-sm text-muted-foreground flex items-center">
-                  {getIndicator(analytics.activeDistricts.change)} {Math.abs(analytics.activeDistricts.change)}% today
-                </p>
-                <div className="mt-2 h-2 bg-muted rounded-full">
-                  <div
-                    className="h-full bg-primary rounded-full"
-                    style={{ width: `${(analytics.activeDistricts.value / 15) * 100}%` }}
-                  />
-                </div>
-              </div>
-              <div className="flex-1 mt-4 sm:mt-0">
-                <p className="text-sm xs:text-base font-semibold text-primary">Total Groups</p>
-                <p className="text-lg xs:text-xl font-bold">{analytics.totalGroups.value}</p>
-                <p className="text-xs xs:text-sm text-muted-foreground flex items-center">
-                  {getIndicator(analytics.totalGroups.change)} {Math.abs(analytics.totalGroups.change)}% this week
-                </p>
-                <div className="mt-2 h-2 bg-muted rounded-full">
-                  <div
-                    className="h-full bg-primary rounded-full"
-                    style={{ width: `${(analytics.totalGroups.value / 50) * 100}%` }}
-                  />
-                </div>
-              </div>
+        <Card className="shadow-soft bg-gradient-to-br from-green-500/10 to-background hover:scale-105 transition-all duration-300">
+          <CardContent className="flex items-center gap-3 pt-4">
+            <DollarSign className="h-6 w-6 text-green-500" />
+            <div>
+              <p className="font-semibold text-green-600">Revenue Generated</p>
+              <p className="text-xl font-bold">UGX {analytics.revenueGenerated.value.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                {getIndicator(analytics.revenueGenerated.change)}
+                {Math.abs(analytics.revenueGenerated.change)}% this week
+              </p>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Trending Topics Table */}
-      <Card className="shadow-soft rounded-lg">
-        <CardHeader className="flex items-center space-x-2">
-          <TrendingUp className="h-5 w-5 text-primary" />
-          <CardTitle className="text-sm xs:text-base">Trending Topics</CardTitle>
+      {/* 🔹 Subscription Plans Pie Chart */}
+      <Card className="shadow-soft bg-card hover:shadow-lg transition-all duration-300">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-green-500" />
+            Subscription Plans Overview
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader className="bg-muted/50 sticky top-0 z-10">
-                <TableRow>
-                  <TableHead className="text-xs sm:text-sm font-semibold text-primary">
-                    Topic
-                  </TableHead>
-                  <TableHead className="text-xs sm:text-sm font-semibold text-primary">
-                    Posts
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {analytics.trendingTopics.map((topic, index) => (
-                  <TableRow
-                    key={topic.name}
-                    className={cn("transition-colors", index % 2 === 0 ? "bg-background" : "bg-muted/20")}
-                  >
-                    <TableCell className="text-xs sm:text-sm font-medium">{topic.name}</TableCell>
-                    <TableCell className="text-xs sm:text-sm">{topic.posts}</TableCell>
-                  </TableRow>
+          <ResponsiveContainer width="100%" height={300}>
+            <PieChart>
+              <Pie
+                data={analytics.subscriptionPlans}
+                dataKey="subscribers"
+                nameKey="plan"
+                cx="50%"
+                cy="50%"
+                outerRadius={80}
+                fill="#8884d8"
+                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+              >
+                {analytics.subscriptionPlans.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
-              </TableBody>
-            </Table>
+              </Pie>
+              <Tooltip formatter={(value) => [`${value} subscribers`, "Subscribers"]} />
+            </PieChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* 🔹 Content Activity */}
+      <Card className="shadow-soft bg-card hover:shadow-lg transition-all duration-300">
+        <CardHeader className="flex items-center gap-2">
+          <MessageSquare className="h-5 w-5 text-green-500" />
+          <CardTitle className="text-base">Content Activity</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col sm:flex-row gap-6">
+          <div className="flex-1">
+            <p className="font-semibold text-green-600">Posts Today</p>
+            <p className="text-xl font-bold">{analytics.postsToday.value}</p>
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              {getIndicator(analytics.postsToday.change)}
+              {Math.abs(analytics.postsToday.change)}% from yesterday
+            </p>
+            <div className="mt-2 h-2 bg-muted rounded-full">
+              <div
+                className="h-full bg-green-500 rounded-full"
+                style={{ width: `${(analytics.postsToday.value / 300) * 100}%` }}
+              />
+            </div>
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-green-600">Articles Today</p>
+            <p className="text-xl font-bold">{analytics.articlesToday.value}</p>
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              {getIndicator(analytics.articlesToday.change)}
+              {Math.abs(analytics.articlesToday.change)}% from yesterday
+            </p>
+            <div className="mt-2 h-2 bg-muted rounded-full">
+              <div
+                className="h-full bg-green-500 rounded-full"
+                style={{ width: `${(analytics.articlesToday.value / 50) * 100}%` }}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* 🔹 Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Post Growth (6 months)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={postGrowth}>
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Bar dataKey="posts" fill="#10b981" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Comments Trend (Last 15 Days)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={commentTrend}>
+                <XAxis dataKey="day" />
+                <YAxis />
+                <Tooltip />
+                <Line type="monotone" dataKey="approved" stroke="#10b981" strokeWidth={2} />
+                <Line type="monotone" dataKey="pending" stroke="#fbbf24" strokeWidth={2} />
+                <Line type="monotone" dataKey="spam" stroke="#ef4444" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Revenue Trend (6 months)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={revenueTrend}>
+                <XAxis dataKey="month" />
+                <YAxis />
+                <Tooltip formatter={(value) => [`UGX ${value.toLocaleString()}`, "Revenue"]} />
+                <Line type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* 🔹 Tables Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Latest Posts</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {latestPosts.map((post, i) => (
+              <div key={i} className="flex justify-between items-center p-2 border-b border-muted last:border-b-0">
+                <div className="flex-1">
+                  <p className="font-medium truncate">{post.title}</p>
+                  <p className="text-xs text-muted-foreground">{post.date}</p>
+                </div>
+                <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(post.status)}`}>
+                  {post.status}
+                </span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Comments</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {recentComments.map((comment, i) => (
+              <div key={i} className="flex justify-between items-start p-2 border-b border-muted last:border-b-0">
+                <div className="flex-1">
+                  <p className="font-medium truncate">{comment.author}</p>
+                  <p className="text-xs text-muted-foreground truncate max-w-[150px]">{comment.comment}</p>
+                  <p className="text-xs text-muted-foreground">{comment.date}</p>
+                </div>
+                <button className="text-green-600 hover:underline flex items-center gap-1 text-xs">
+                  <Eye className="h-3 w-3" /> View
+                </button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent Subscriptions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {recentSubscriptions.map((sub, i) => (
+              <div key={i} className="flex justify-between items-center p-2 border-b border-muted last:border-b-0">
+                <div className="flex-1">
+                  <p className="font-medium truncate">{sub.user}</p>
+                  <p className="text-xs text-muted-foreground">{sub.plan}</p>
+                  <p className="text-xs text-green-600 font-medium">UGX {sub.amount.toLocaleString()}</p>
+                </div>
+                <p className="text-xs text-muted-foreground">{sub.date}</p>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 };

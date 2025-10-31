@@ -6,7 +6,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { AuthProvider } from "@/context/AuthContext";
 
-// Pages
+// Public Pages
+import Landing from "./pages/Landing";
 import Home from "./welcome/Home";
 import Feed from "./pages/Feed";
 import Topics from "./pages/Topics";
@@ -30,30 +31,31 @@ import ResetPassword from "./welcome/Auth/ResetPassword";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
 
-
-// Admin pages
+// Admin Layout & Pages
 import { DashboardLayout } from "@/components/admin/layouts/DashboardLayout";
-import { Users } from "@/components/admin/pages/Users";
-import { AdminGroups } from "@/components/admin/pages/Groups";
+import { Users } from "@/components/admin/pages/users/Users";
+import { AdminGroups } from "@/components/admin/pages/groups/Groups";
 import { Analytics } from "@/components/admin/pages/Analytics";
 import { Dashboard } from "@/components/admin/pages/Dashboard";
 import { Moderation } from "@/components/admin/pages/Moderation";
 import { AdminSettings } from "@/components/admin/pages/Settings";
+import { AdminCommunication } from "@/components/admin/pages/AdminCommunication";
+import { SubscriptionManagement } from "@/components/admin/pages/SubscriptionManagement";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
-      <AuthProvider>
-        <ThemeProvider defaultTheme="light" storageKey="uganda-connects-theme">
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-
+    <AuthProvider>
+      <ThemeProvider defaultTheme="light" storageKey="uganda-connects-theme">
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
             <Routes>
-              {/* Public */}
+              {/* === PUBLIC ROUTES === */}
               <Route path="/" element={<Home />} />
+              <Route path="/home" element={<Home />} />
               <Route path="/feed" element={<Feed />} />
               <Route path="/topics" element={<Topics />} />
               <Route path="/articles" element={<Articles />} />
@@ -71,11 +73,11 @@ const App = () => (
               <Route path="/join-discussions" element={<JoinDiscussions />} />
               <Route path="/signup" element={<Signup />} />
               <Route path="/signin" element={<Signin />} />
-              <Route path="/social-login" element={<SocialLogin />} />               
+              <Route path="/social-login" element={<SocialLogin />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
 
-              {/* Admin */}
+              {/* === ADMIN DASHBOARD (Nested Layout) === */}
               <Route path="/admin" element={<DashboardLayout />}>
                 <Route index element={<Dashboard />} />
                 <Route path="dashboard" element={<Dashboard />} />
@@ -84,15 +86,17 @@ const App = () => (
                 <Route path="analytics" element={<Analytics />} />
                 <Route path="moderation" element={<Moderation />} />
                 <Route path="settings" element={<AdminSettings />} />
+                <Route path="communication" element={<AdminCommunication />} />
+                <Route path="subscriptions" element={<SubscriptionManagement />} />
               </Route>
 
-              {/* Catch all */}
+              {/* === 404 === */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </TooltipProvider>
-        </ThemeProvider>
-      </AuthProvider>
-    </BrowserRouter>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
+    </AuthProvider>
   </QueryClientProvider>
 );
 
