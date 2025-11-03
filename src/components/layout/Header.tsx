@@ -9,21 +9,15 @@ import {
   User,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useTheme } from "@/components/providers/ThemeProvider";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
-
-//  Correct imports
-import { notificationService } from "@/services/notificationService"; // REST API (getAll, markRead)
-import {
-  connectNotificationSocket,
-  disconnectNotificationSocket,
-} from "@/services/notificationWS"; // WebSocket live updates
-
+import { debounce } from "lodash";
+import { searchService } from "@/services/searchService"; 
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +27,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+import { notificationService } from "@/services/notificationService";
+import {
+  connectNotificationSocket,
+  disconnectNotificationSocket,
+} from "@/services/notificationWS";
+
 export const Header = () => {
   const { theme, setTheme } = useTheme();
   const { user, token, loading, logout } = useAuth();
@@ -40,13 +40,19 @@ export const Header = () => {
 
   const [unreadCount, setUnreadCount] = useState<number>(0);
 
+  // ✅ Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [searching, setSearching] = useState(false);
+
   const handleLogout = () => {
     disconnectNotificationSocket();
     logout();
     toast.success("Logged out successfully");
   };
 
-  //  Fetch unread notifications count (REST)
+  // 🔔 Notifications (unchanged)
   const fetchUnreadCount = async () => {
     if (!user) return;
     try {
@@ -58,21 +64,17 @@ export const Header = () => {
     }
   };
 
-  //  Manage WebSocket connection + real-time updates
   useEffect(() => {
     if (!token || !user) return;
 
     fetchUnreadCount();
 
     let ws = connectNotificationSocket(token, (message) => {
-      console.log("📡 New notification:", message);
       setUnreadCount((prev) => prev + 1);
       toast.info(message.message || "New notification received!");
     });
 
-    //  Auto-reconnect if WS closes
     ws.onclose = () => {
-      console.warn(" WebSocket closed — reconnecting in 5s...");
       setTimeout(() => {
         if (token) {
           ws = connectNotificationSocket(token, (message) => {
@@ -82,7 +84,6 @@ export const Header = () => {
       }, 5000);
     };
 
-    // Custom DOM events to sync with Notifications page
     const onReadAll = () => setUnreadCount(0);
     const onMarkOne = () => setUnreadCount((prev) => Math.max(0, prev - 1));
 
@@ -97,7 +98,52 @@ export const Header = () => {
     };
   }, [token, user?.id]);
 
-  //  Loading State
+  // ✅ Debounced search handler
+  const handleSearch = useCallback(
+    debounce(async (query: string) => {
+      if (!query.trim()) {
+        setSuggestions([]);
+        return;
+      }
+      try {
+        setSearching(true);
+        const results = await searchService.globalSearch(query);
+        setSuggestions(results);
+        setShowSuggestions(true);
+      } catch (err) {
+        console.error("Search failed:", err);
+      } finally {
+        setSearching(false);
+      }
+    }, 400),
+    []
+  );
+
+  // ✅ Search input change
+  const onSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const q = e.target.value;
+    setSearchQuery(q);
+    handleSearch(q);
+  };
+
+  // ✅ Navigate to full search page
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/search?query=${encodeURIComponent(searchQuery.trim())}`);
+      setShowSuggestions(false);
+    }
+  };
+
+  // ✅ Navigate when clicking a suggestion
+  const handleSuggestionClick = (item: any) => {
+    setShowSuggestions(false);
+    if (item.type === "article") navigate(`/articles/${item.id}`);
+    else if (item.type === "post") navigate(`/posts/${item.id}`);
+    else if (item.type === "discussion") navigate(`/discussions/${item.id}`);
+    else if (item.type === "user") navigate(`/profile/${item.id}`);
+  };
+
   if (loading) {
     return (
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur">
@@ -108,7 +154,6 @@ export const Header = () => {
     );
   }
 
-  //  Main Header
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between px-4">
@@ -120,20 +165,49 @@ export const Header = () => {
           <span className="font-bold text-xl text-gradient">CIV-CON</span>
         </div>
 
-        {/* Search */}
-        <div className="hidden md:flex flex-1 max-w-md mx-8">
-          <div className="relative w-full">
+        {/* ✅ Search Box */}
+        <div className="hidden md:flex flex-1 max-w-md mx-8 relative">
+          <form onSubmit={handleSubmit} className="w-full relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
             <Input
               placeholder="Search discussions, articles, topics..."
+              value={searchQuery}
+              onChange={onSearchChange}
+              onFocus={() => setShowSuggestions(true)}
               className="pl-10 bg-muted/50 border-none focus-visible:ring-gray-400"
             />
-          </div>
+          </form>
+
+          {/* ✅ Suggestions Dropdown */}
+          {showSuggestions && searchQuery.trim() && (
+            <div className="absolute top-full mt-2 w-full bg-background border rounded-lg shadow-lg max-h-72 overflow-y-auto z-50">
+              {searching && (
+                <div className="p-3 text-sm text-muted-foreground">Searching...</div>
+              )}
+              {!searching && suggestions.length === 0 && (
+                <div className="p-3 text-sm text-muted-foreground">
+                  No results found.
+                </div>
+              )}
+              {!searching &&
+                suggestions.map((item, i) => (
+                  <div
+                    key={i}
+                    onClick={() => handleSuggestionClick(item)}
+                    className="p-3 text-sm hover:bg-muted cursor-pointer transition-all"
+                  >
+                    <span className="font-medium">{item.title || item.name}</span>
+                    <span className="text-xs text-muted-foreground ml-2">
+                      ({item.type})
+                    </span>
+                  </div>
+                ))}
+            </div>
+          )}
         </div>
 
-        {/* Actions */}
+        {/* Actions (unchanged) */}
         <div className="flex items-center space-x-2">
-          {/* Theme toggle */}
           <Button
             variant="ghost"
             size="icon"
@@ -141,17 +215,14 @@ export const Header = () => {
           >
             <Sun className="h-5 w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
             <Moon className="absolute h-5 w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-            <span className="sr-only">Toggle theme</span>
           </Button>
 
-          {/* Events */}
           <Link to="/events">
             <Button variant="ghost" size="icon">
               <Calendar className="h-5 w-5" />
             </Button>
           </Link>
 
-          {/* Notifications */}
           {user && (
             <Link to="/notifications">
               <Button variant="ghost" size="icon" className="relative">
@@ -165,7 +236,6 @@ export const Header = () => {
             </Link>
           )}
 
-          {/* Auth Section */}
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

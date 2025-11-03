@@ -20,6 +20,8 @@ import Settings from "./pages/Settings";
 import PostDetail from "./pages/PostDetail";
 import DiscussionRoom from "./pages/DiscussionRoom";
 import Events from "./pages/Events";
+import ArticleDetails from "./pages/ArticleDetails";
+import CreateArticle from "./pages/CreateArticle";
 import LiveDiscussion from "./pages/LiveDiscussion";
 import JoinDiscussions from "./pages/JoinDiscussions";
 import Signup from "./welcome/Auth/Signup";
@@ -29,6 +31,7 @@ import ForgotPassword from "./welcome/Auth/ForgotPassword";
 import ResetPassword from "./welcome/Auth/ResetPassword";
 import NotFound from "./pages/NotFound";
 import Profile from "./pages/Profile";
+import UserProfile from "@/pages/UserProfile";
 
 
 // Admin pages
@@ -39,6 +42,7 @@ import { Analytics } from "@/components/admin/pages/Analytics";
 import { Dashboard } from "@/components/admin/pages/Dashboard";
 import { Moderation } from "@/components/admin/pages/Moderation";
 import { AdminSettings } from "@/components/admin/pages/Settings";
+import SearchPage from "./pages/SearchPage";
 
 const queryClient = new QueryClient();
 
@@ -57,13 +61,17 @@ const App = () => (
               <Route path="/feed" element={<Feed />} />
               <Route path="/topics" element={<Topics />} />
               <Route path="/articles" element={<Articles />} />
+              <Route path="/create-article" element={<CreateArticle />} /> 
+              <Route path="/articles/:id" element={<ArticleDetails />} />
               <Route path="/explore" element={<Explore />} />
               <Route path="/groups" element={<Groups />} />
               <Route path="/groups/:id/discussions" element={<GroupDiscussions />} />
               <Route path="/people" element={<People />} />
               <Route path="/notifications" element={<Notifications />} />
+              <Route path="/search-page" element={<SearchPage />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/user/:username" element={<UserProfile />} />
               <Route path="/post/:id" element={<PostDetail />} />
               <Route path="/discussion/:topicId" element={<DiscussionRoom />} />
               <Route path="/events" element={<Events />} />

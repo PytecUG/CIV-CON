@@ -19,6 +19,8 @@ import { postService } from "@/services/postService";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
+
+// INTERFACES
 interface Comment {
   id: number;
   content: string;
@@ -68,6 +70,8 @@ interface PostCardProps {
   onPostDeleted?: (id: number) => void;
 }
 
+
+//  POST CARD COMPONENT
 export const PostCard = ({
   post,
   onCommentAdded,
@@ -82,13 +86,14 @@ export const PostCard = ({
   const [loadingComments, setLoadingComments] = useState(false);
   const [activeReply, setActiveReply] = useState<number | null>(null);
 
+  /** Sync like/share state when post changes */
   useEffect(() => {
     setLikes(post.like_count || post.likes || 0);
     setLiked(post.is_liked || false);
     setShares(post.shares || 0);
   }, [post.id, post.like_count, post.is_liked, post.shares]);
 
-  /** 🔹 Fetch comments */
+  /** Fetch comments */
   const fetchComments = async () => {
     setLoadingComments(true);
     try {
@@ -106,7 +111,7 @@ export const PostCard = ({
     if (showCommentForm) fetchComments();
   }, [showCommentForm]);
 
-  /** 🔹 Like / Unlike */
+  /** Handle Like */
   const handleLike = async () => {
     if (!token) return toast.error("Please sign in to like posts.");
     try {
@@ -119,7 +124,7 @@ export const PostCard = ({
     }
   };
 
-  /** 🔹 Share post */
+  /** Handle Share */
   const handleShare = async () => {
     if (!token) return toast.error("Please sign in to share posts.");
     try {
@@ -132,7 +137,7 @@ export const PostCard = ({
     }
   };
 
-  /** 🔹 Delete post */
+  /** Handle Delete */
   const handleDelete = async () => {
     if (!token) return toast.error("Please sign in.");
     if (!confirm("Are you sure you want to delete this post?")) return;
@@ -146,7 +151,7 @@ export const PostCard = ({
     }
   };
 
-  /** 🔹 Submit top-level comment */
+  /** Handle Comment Submit */
   const handleCommentSubmit = async (comment: string) => {
     try {
       const newComment = await postService.addComment(post.id, comment);
@@ -159,7 +164,7 @@ export const PostCard = ({
     }
   };
 
-  /** 🔹 Role badge colors */
+  /** Role Badge Color */
   const getRoleColor = (role: string) => {
     switch (role?.toLowerCase()) {
       case "leader":
@@ -173,9 +178,9 @@ export const PostCard = ({
     }
   };
 
-  /** 🔹 Recursive renderer for nested comments */
-  const renderComments = (commentList: Comment[], depth = 0) => {
-    return commentList.map((c) => (
+  /** Recursive Renderer for Nested Comments */
+  const renderComments = (commentList: Comment[], depth = 0) =>
+    commentList.map((c) => (
       <div key={c.id} className={`mt-3 ${depth > 0 ? "ml-8" : ""}`}>
         <div className="flex items-start space-x-3">
           <Avatar className="h-8 w-8">
@@ -208,7 +213,6 @@ export const PostCard = ({
           </div>
         </div>
 
-        {/* Reply form inline */}
         {activeReply === c.id && (
           <CommentForm
             postId={post.id}
@@ -220,29 +224,24 @@ export const PostCard = ({
           />
         )}
 
-        {/* Nested replies */}
         {c.replies && c.replies.length > 0 && renderComments(c.replies, depth + 1)}
       </div>
     ));
-  };
+
+  
+   //COMPONENT RENDER
 
   return (
-    <Card className="mb-6 shadow-soft hover:shadow-strong transition-shadow duration-300">
+    <Card className="mb-6 shadow-soft hover:shadow-strong transition-shadow duration-300 overflow-hidden">
       <CardContent className="p-6">
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center space-x-3">
             <Avatar className="h-10 w-10">
-              {post.user.avatar ? (
-                <AvatarImage src={post.user.avatar} alt={post.user.name} />
-              ) : (
-                <AvatarFallback className="bg-gray-200 text-gray-600">
-                  {post.user.name
-                    ?.split(" ")
-                    .map((n) => n[0])
-                    .join("")}
-                </AvatarFallback>
-              )}
+              <AvatarImage src={post.user.avatar} alt={post.user.name} />
+              <AvatarFallback>
+                {post.user.name?.split(" ").map((n) => n[0]).join("")}
+              </AvatarFallback>
             </Avatar>
             <div>
               <div className="flex items-center space-x-2">
@@ -265,7 +264,7 @@ export const PostCard = ({
             </div>
           </div>
 
-          {/* Owner actions */}
+          {/* Post Actions */}
           {user && user.id === post.user.id ? (
             <div className="flex space-x-2">
               <Button
@@ -286,7 +285,7 @@ export const PostCard = ({
           )}
         </div>
 
-        {/* Content */}
+        {/* Post Content */}
         <div className="mb-4">
           <Link to={`/post/${post.id}`} className="hover:underline">
             <p className="text-foreground leading-relaxed whitespace-pre-wrap">
@@ -294,28 +293,47 @@ export const PostCard = ({
             </p>
           </Link>
 
+          {/*  Media Section (Images / Videos) */}
           {post.media?.length ? (
-            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {post.media.map((m, idx) =>
-                m.media_type.startsWith("image") ? (
-                  <img
+            <div
+              className={`mt-4 grid ${
+                post.media.length === 1
+                  ? "grid-cols-1"
+                  : "grid-cols-1 sm:grid-cols-2"
+              } gap-4`}
+            >
+              {post.media.map((m, idx) => {
+                const isImage = m.media_type.startsWith("image");
+                const isVideo = m.media_type.startsWith("video");
+
+                return (
+                  <div
                     key={idx}
-                    src={m.media_url}
-                    alt={`Post media ${idx + 1}`}
-                    className="w-full max-h-[550px] object-contain rounded-xl border border-border shadow-sm hover:scale-[1.02] transition-transform duration-300"
-                  />
-                ) : m.media_type.startsWith("video") ? (
-                  <video
-                    key={idx}
-                    src={m.media_url}
-                    controls
-                    className="w-full max-h-[500px] object-cover rounded-lg"
-                  />
-                ) : null
-              )}
+                    className="relative w-full overflow-hidden rounded-xl border border-border/50 bg-muted/10 shadow-sm"
+                  >
+                    {isImage && (
+                      <img
+                        src={m.media_url}
+                        alt={`Post media ${idx + 1}`}
+                        className="w-full h-auto aspect-[4/3] object-cover rounded-xl transition-transform duration-300 hover:scale-[1.01]"
+                        loading="lazy"
+                      />
+                    )}
+                    {isVideo && (
+                      <video
+                        src={m.media_url}
+                        controls
+                        preload="metadata"
+                        className="w-full aspect-video rounded-xl"
+                      />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : null}
 
+          {/*  Live Interview (Optional Feature) */}
           {post.type === "interview" && (
             <div className="mt-3 p-4 bg-red-500 rounded-lg border border-red-600 flex items-center space-x-2 text-white">
               <Play className="h-5 w-5" />
@@ -324,14 +342,16 @@ export const PostCard = ({
           )}
         </div>
 
-        {/* Actions */}
+        {/* Actions (Like / Comment / Share) */}
         <div className="flex items-center justify-between pt-4 border-t">
           <div className="flex space-x-4">
             <Button
               variant="ghost"
               size="sm"
               onClick={handleLike}
-              className={`${liked ? "text-red-500" : "text-muted-foreground"} hover:text-red-600`}
+              className={`${
+                liked ? "text-red-500" : "text-muted-foreground"
+              } hover:text-red-600`}
             >
               <Heart
                 className={`h-4 w-4 mr-2 ${
@@ -363,7 +383,7 @@ export const PostCard = ({
           </div>
         </div>
 
-        {/* Comment Section */}
+        {/* 🔹 Comments Section */}
         {showCommentForm && (
           <div className="mt-4 border-t pt-3 space-y-3">
             <CommentForm
@@ -391,4 +411,3 @@ export const PostCard = ({
     </Card>
   );
 };
-
