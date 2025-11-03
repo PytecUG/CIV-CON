@@ -90,9 +90,8 @@ export const Moderation = () => {
 
   const perPage = 8;
 
-  // ================================
-  // 🚀 Fetch posts and topics
-  // ================================
+  
+  //  Fetch posts and topics
   const fetchData = async () => {
     setRefreshing(true);
     try {
@@ -138,9 +137,8 @@ export const Moderation = () => {
     fetchData();
   }, []);
 
-  // ================================
-  // 📊 Stats + Filters
-  // ================================
+  
+  //  Stats + Filters
   const filteredPosts = useMemo(() => {
     return posts.filter((p) => {
       const matchesSearch =
@@ -174,10 +172,9 @@ export const Moderation = () => {
 
   const COLORS = ["#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6"];
 
-  // ================================
-  // 🔧 Actions
-  // ================================
-  const handleBulkAction = async (action: "approve" | "remove") => {
+  
+  //  Actions
+  const handleBulkAction = async (action: "approve" | "remove" | "suspend") => {
     try {
       await Promise.all(
         selected.map((id) => api.post(`/admin/moderation/post/${id}/${action}`))
@@ -242,9 +239,8 @@ export const Moderation = () => {
     toast({ title: "Exported", description: `${filteredPosts.length} posts` });
   };
 
-  // ================================
-  // 🧩 Rendering
-  // ================================
+
+  //  Rendering
   if (loading)
     return (
       <div className="flex items-center justify-center h-[70vh] text-muted-foreground animate-pulse">

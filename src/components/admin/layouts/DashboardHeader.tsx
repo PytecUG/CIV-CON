@@ -92,18 +92,22 @@ export const DashboardHeader = () => {
     fetchUnreadCounts();
 
     let ws = connectNotificationSocket(token, (msg) => {
-      setUnread((prev) => ({
-        ...prev,
-        total: prev.total + 1,
-        [msg.type === "chat_message"
+      const key =
+        msg.type === "chat_message"
           ? "chat"
           : msg.type === "email"
           ? "email"
-          : "system"]: prev[msg.type] + 1,
+          : "system"; // fallback for all else
+
+      setUnread((prev) => ({
+        ...prev,
+        total: prev.total + 1,
+        [key]: prev[key as keyof typeof prev] + 1, 
       }));
 
       toast.info(msg.message || "New notification received!");
     });
+
 
     ws.onclose = () => {
       setTimeout(() => {
