@@ -19,9 +19,9 @@ import { toast } from "sonner";
 import axios from "axios";
 import { Textarea } from "@/components/ui/textarea";
 
-// ✅ Cloudinary configuration
-const CLOUDINARY_UPLOAD_URL = "https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME/image/upload";
-const CLOUDINARY_UPLOAD_PRESET = "YOUR_UPLOAD_PRESET"; // replace with your unsigned preset
+const CLOUDINARY_UPLOAD_URL =
+  "https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME/image/upload";
+const CLOUDINARY_UPLOAD_PRESET = "YOUR_UPLOAD_PRESET"; // unsigned preset
 
 interface RichTextEditorProps {
   value: string;
@@ -34,34 +34,28 @@ export const RichTextEditor = ({ value, onChange }: RichTextEditorProps) => {
   const editor = useEditor({
     extensions: [
       StarterKit,
-      Link.configure({
-        openOnClick: false,
-      }),
-      Image.configure({
-        inline: false,
-      }),
+      Link.configure({ openOnClick: false }),
+      Image.configure({ inline: false }),
       Placeholder.configure({
         placeholder: "Write your article content here...",
       }),
     ],
     content: value,
-    onUpdate: ({ editor }) => {
-      onChange(editor.getHTML());
-    },
-    onError: () => {
-      console.error("Failed to initialize TipTap — falling back to Textarea");
-      setFallback(true);
-    },
+    onUpdate: ({ editor }) => onChange(editor.getHTML()),
   });
 
-  /** ✅ Cleanup editor instance on unmount */
+  // TipTap no longer supports `onError`, so we use try/catch fallback
   useEffect(() => {
-    return () => {
-      editor?.destroy?.();
-    };
+    if (!editor) return;
+    try {
+      editor.getHTML();
+    } catch {
+      console.error("TipTap init failed — fallback to textarea");
+      setFallback(true);
+    }
+    return () => editor?.destroy?.();
   }, [editor]);
 
-  // Fallback to Textarea if TipTap fails
   if (fallback) {
     return (
       <Textarea
@@ -75,8 +69,17 @@ export const RichTextEditor = ({ value, onChange }: RichTextEditorProps) => {
 
   if (!editor) return null;
 
-  // ✅ Toolbar button helper
-  const ToolbarButton = ({ icon: Icon, onClick, isActive, label }: any) => (
+  const ToolbarButton = ({
+    icon: Icon,
+    onClick,
+    isActive,
+    label,
+  }: {
+    icon: React.ElementType;
+    onClick: () => void;
+    isActive?: boolean;
+    label: string;
+  }) => (
     <Button
       type="button"
       size="sm"
@@ -89,7 +92,6 @@ export const RichTextEditor = ({ value, onChange }: RichTextEditorProps) => {
     </Button>
   );
 
-  // ✅ Upload image to Cloudinary
   const handleImageUpload = async () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -98,7 +100,6 @@ export const RichTextEditor = ({ value, onChange }: RichTextEditorProps) => {
     input.onchange = async () => {
       const file = input.files?.[0];
       if (!file) return;
-
       const formData = new FormData();
       formData.append("file", file);
       formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
@@ -107,28 +108,24 @@ export const RichTextEditor = ({ value, onChange }: RichTextEditorProps) => {
         const { data } = await axios.post(CLOUDINARY_UPLOAD_URL, formData, {
           headers: { "Content-Type": "multipart/form-data" },
         });
-
         if (data.secure_url) {
           editor.chain().focus().setImage({ src: data.secure_url }).run();
-          toast.success("Image added successfully!");
-        } else {
-          throw new Error("No secure_url returned from Cloudinary");
-        }
+          toast.success("Image uploaded successfully!");
+        } else throw new Error("Missing Cloudinary URL");
       } catch (err) {
-        console.error("Cloudinary upload failed:", err);
-        toast.error("Failed to upload image. Please try again.");
+        console.error(err);
+        toast.error("Image upload failed. Try again.");
       }
     };
 
     input.click();
   };
 
-  // ✅ Add link with safe prompt
   const handleAddLink = () => {
     const url = window.prompt("Enter a valid URL:");
     if (!url) return;
     try {
-      new URL(url); // Validate format
+      new URL(url);
       editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
       toast.success("Link added!");
     } catch {
@@ -138,8 +135,7 @@ export const RichTextEditor = ({ value, onChange }: RichTextEditorProps) => {
 
   return (
     <div className="border rounded-lg overflow-hidden">
-      {/* Toolbar */}
-      <div className="flex items-center flex-wrap gap-1 border-b bg-muted/30 p-2 rounded-t-lg">
+      <div className="flex flex-wrap items-center gap-1 border-b bg-muted/30 p-2 rounded-t-lg">
         <ToolbarButton
           icon={Bold}
           onClick={() => editor.chain().focus().toggleBold().run()}
@@ -180,7 +176,6 @@ export const RichTextEditor = ({ value, onChange }: RichTextEditorProps) => {
         <ToolbarButton icon={ImageIcon} onClick={handleImageUpload} label="Add Image" />
       </div>
 
-      {/* Editor Area */}
       <div className="prose max-w-none p-4 min-h-[250px]">
         <EditorContent editor={editor} />
       </div>

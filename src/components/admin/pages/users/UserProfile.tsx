@@ -1,12 +1,38 @@
-// ──────────────────────────────────────────────────────────────
-// 1. Reusable UserProfile modal
-// src/components/admin/users/UserProfile.tsx
-// ──────────────────────────────────────────────────────────────
-import { X, Mail, Phone, MapPin, Calendar, User, Shield, Clock, CreditCard } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  X,
+  Mail,
+  Phone,
+  MapPin,
+  Calendar,
+  User as UserIcon,
+  Clock,
+  CreditCard,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { format } from "date-fns";
+
+export interface User {
+  id: number;
+  name: string;
+  email: string;
+  phone?: string;
+  district: string;
+  role: string;
+  status: "Active" | "Suspended" | "Pending";
+  avatar?: string;
+  createdAt: string;
+  subscriptionEnd?: string;
+  subscriptionTier?: string;
+  subscriptionStatus?: string;
+  subscriptionAmount?: number;
+}
 
 interface UserProfileProps {
   user: User | null;
@@ -14,7 +40,11 @@ interface UserProfileProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export const UserProfile = ({ user, open, onOpenChange }: UserProfileProps) => {
+export const UserProfile = ({
+  user,
+  open,
+  onOpenChange,
+}: UserProfileProps) => {
   if (!user) return null;
 
   return (
@@ -23,7 +53,10 @@ export const UserProfile = ({ user, open, onOpenChange }: UserProfileProps) => {
         <DialogHeader>
           <DialogTitle className="flex items-center justify-between">
             <span>User Profile</span>
-            <button onClick={() => onOpenChange(false)} className="text-muted-foreground hover:text-foreground">
+            <button
+              onClick={() => onOpenChange(false)}
+              className="text-muted-foreground hover:text-foreground"
+            >
               <X className="h-5 w-5" />
             </button>
           </DialogTitle>
@@ -33,9 +66,13 @@ export const UserProfile = ({ user, open, onOpenChange }: UserProfileProps) => {
           {/* Avatar & Header */}
           <div className="flex items-center gap-4">
             <Avatar className="h-20 w-20">
-              <AvatarImage src={user.avatar} />
+              <AvatarImage src={user.avatar || ""} alt={user.name} />
               <AvatarFallback className="text-2xl bg-green-100 text-green-700">
-                {user.name.split(" ").map((n) => n[0]).join("").toUpperCase()}
+                {user.name
+                  .split(" ")
+                  .map((n: string) => n[0])
+                  .join("")
+                  .toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div>
@@ -55,7 +92,7 @@ export const UserProfile = ({ user, open, onOpenChange }: UserProfileProps) => {
             </div>
           </div>
 
-          {/* Grid of core fields */}
+          {/* Core info grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
             <div className="flex items-center gap-3">
               <Mail className="h-4 w-4 text-muted-foreground" />
@@ -70,12 +107,14 @@ export const UserProfile = ({ user, open, onOpenChange }: UserProfileProps) => {
               <span>{user.district}</span>
             </div>
             <div className="flex items-center gap-3">
-              <User className="h-4 w-4 text-muted-foreground" />
+              <UserIcon className="h-4 w-4 text-muted-foreground" />
               <span>{user.role}</span>
             </div>
             <div className="flex items-center gap-3">
               <Calendar className="h-4 w-4 text-muted-foreground" />
-              <span>Joined {format(new Date(user.createdAt), "MMM d, yyyy")}</span>
+              <span>
+                Joined {format(new Date(user.createdAt), "MMM d, yyyy")}
+              </span>
             </div>
             <div className="flex items-center gap-3">
               <Clock className="h-4 w-4 text-muted-foreground" />
@@ -88,7 +127,7 @@ export const UserProfile = ({ user, open, onOpenChange }: UserProfileProps) => {
             </div>
           </div>
 
-          {/* Subscription block – only if paid tier */}
+          {/* Subscription info */}
           {user.subscriptionTier && (
             <div className="border rounded-lg p-4 bg-muted/30">
               <h4 className="font-semibold mb-2 flex items-center gap-2">

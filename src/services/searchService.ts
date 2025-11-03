@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || "https://api.civ-con.org";
+const API_URL = import.meta.env.VITE_API_BASE_URL || "https://api.civ-con.org";
+
 
 export const searchService = {
   async globalSearch(query: string) {

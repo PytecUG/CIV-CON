@@ -44,16 +44,16 @@ const People = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const API_BASE = import.meta.env.VITE_API_URL || "https://api.civ-con.org";
+      const API_URL = import.meta.env.VITE_API_BASE_URL || "https://api.civ-con.org";
       const params: any = {};
       if (searchQuery.trim()) params.search = searchQuery;
       if (selectedRegion !== "All") params.region = selectedRegion;
 
-      const res = await axios.get(`${API_BASE}/users/`, { params });
+      const res = await axios.get(`${API_URL}/users/`, { params });
       let usersData: User[] = res.data;
 
       if (token && currentUser) {
-        const followingRes = await axios.get(`${API_BASE}/follow/${currentUser.id}/following`);
+        const followingRes = await axios.get(`${API_URL}/follow/${currentUser.id}/following`);
         const followingIds = followingRes.data.map((u: any) => u.id);
         usersData = usersData.map((u) => ({
           ...u,

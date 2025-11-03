@@ -1,13 +1,14 @@
+// src/constants/index.tsx
 import {
   FaComments,
   FaUser,
   FaBullhorn,
   FaHeadphones,
-  FaUsersCog,
-  FaPen,
+  FaUserCog,
+  FaPenNib,
 } from "react-icons/fa";
 
-import {
+import { 
   Home,
   MessageSquare,
   Hash,
@@ -18,6 +19,9 @@ import {
   Users,
 } from "lucide-react";
 
+/* ───────────────────────────────
+   🚀 Platform Feature Highlights
+─────────────────────────────── */
 export const features = [
   {
     id: "0",
@@ -43,6 +47,9 @@ export const features = [
   },
 ];
 
+/* ───────────────────────────────
+   💬 Key Value Details
+─────────────────────────────── */
 export const details = [
   { id: "0", icon: FaComments, title: "Engage in Public Discussions" },
   { id: "1", icon: FaUser, title: "Connect with Fellow Citizens" },
@@ -50,6 +57,9 @@ export const details = [
   { id: "3", icon: FaHeadphones, title: "Access News & Updates" },
 ];
 
+/* ───────────────────────────────
+   💎 Subscription Plans
+─────────────────────────────── */
 export const plans = [
   {
     id: "0",
@@ -63,7 +73,7 @@ export const plans = [
       "Follow leaders & journalists",
       "Basic community profile",
     ],
-    icon: FaUsersCog,
+    icon: FaUserCog, 
     logo: null,
   },
   {
@@ -78,7 +88,7 @@ export const plans = [
       "Verified journalist badge",
       "Priority support",
     ],
-    icon: FaPen,
+    icon: FaPenNib, 
     logo: null,
   },
   {
@@ -98,6 +108,9 @@ export const plans = [
   },
 ];
 
+/* ───────────────────────────────
+   ⭐ Testimonials
+─────────────────────────────── */
 export const testimonials = [
   {
     id: "0",
@@ -149,45 +162,16 @@ export const testimonials = [
   },
 ];
 
+/* ───────────────────────────────
+   🧭 Sidebar Navigation Items
+─────────────────────────────── */
 export const sidebarItems = [
-  {
-    title: "Feed",
-    icon: Home,
-    href: "/feed",
-  },
-  {
-    title: "Topics",
-    icon: Hash,
-    href: "/topics",
-  },
-  {
-    title: "Articles",
-    icon: FileText,
-    href: "/articles",
-  },
-  {
-    title: "Hot Topics",
-    icon: TrendingUp,
-    href: "/explore",
-  },
-  {
-    title: "Community Groups",
-    icon: Users,
-    href: "/groups",
-  },
-  {
-    title: "Messages",
-    icon: MessageSquare,
-    href: "/messages",
-  },
-  {
-    title: "Profile",
-    icon: LucideUser,
-    href: "/profile",
-  },
-  {
-    title: "Settings",
-    icon: Settings,
-    href: "/settings",
-  },
+  { title: "Feed", icon: Home, href: "/feed" },
+  { title: "Topics", icon: Hash, href: "/topics" },
+  { title: "Articles", icon: FileText, href: "/articles" },
+  { title: "Hot Topics", icon: TrendingUp, href: "/explore" },
+  { title: "Community Groups", icon: Users, href: "/groups" },
+  { title: "Messages", icon: MessageSquare, href: "/messages" },
+  { title: "Profile", icon: LucideUser, href: "/profile" },
+  { title: "Settings", icon: Settings, href: "/settings" },
 ];

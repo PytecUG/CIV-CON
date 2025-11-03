@@ -2,14 +2,9 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Users, GitBranch } from "lucide-react";
+import { Group } from "@/types/group";
 
-interface Group {
-  id: number;
-  name: string;
-  members: number;
-  status: "Active" | "Suspended" | "Pending";
-  createdAt: string;
-}
+
 
 interface Props {
   group: Group | null;

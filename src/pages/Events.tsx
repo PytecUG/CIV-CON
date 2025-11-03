@@ -5,11 +5,24 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { CalendarDays, Clock, MapPin, Users, Plus, Filter } from "lucide-react";
+import {
+  CalendarDays,
+  Clock,
+  MapPin,
+  Users,
+  Plus,
+  Filter,
+} from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import axios from "axios";
@@ -41,9 +54,10 @@ const Events = () => {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All");
-  const { user: currentUser, token } = useAuth();
+  const { token } = useAuth();
 
-  const API_BASE = import.meta.env.VITE_API_URL || "https://api.civ-con.org";
+  const API_URL = import.meta.env.VITE_API_BASE_URL || "https://api.civ-con.org";
+
 
   const [newEvent, setNewEvent] = useState({
     title: "",
@@ -63,39 +77,39 @@ const Events = () => {
   }, [selectedDate, selectedCategory, events]);
 
   const fetchEvents = async () => {
-  try {
-    setLoading(true);
-    const res = await eventService.list({
-      search: searchQuery,
-      category: selectedCategory !== "All" ? selectedCategory : undefined,
-      upcoming: true,
-      sort: "popular",
-    });
-    setEvents(res);
-  } catch (err) {
-    toast.error("Failed to load events.");
-  } finally {
-    setLoading(false);
-  }
+    try {
+      setLoading(true);
+      const res = await eventService.list({
+        category: selectedCategory !== "All" ? selectedCategory : undefined,
+        upcoming: true,
+        sort: "popular",
+      });
+      setEvents(res);
+    } catch {
+      toast.error("Failed to load events.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCreateEvent = async () => {
-    if (!token) {
-      toast.warning("Please log in to create events.");
-      return;
-    }
+    if (!token) return toast.warning("Please log in to create events.");
     try {
       setCreating(true);
-      const res = await axios.post(
-        `${API_BASE}/events/`,
-        newEvent,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const res = await axios.post(`${API_URL}/events/`, newEvent, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       toast.success("Event created successfully!");
-      setNewEvent({ title: "", description: "", date: "", time: "", location: "", category: "" });
+      setNewEvent({
+        title: "",
+        description: "",
+        date: "",
+        time: "",
+        location: "",
+        category: "",
+      });
       setEvents((prev) => [res.data, ...prev]);
-    } catch (err) {
-      console.error(err);
+    } catch {
       toast.error("Failed to create event.");
     } finally {
       setCreating(false);
@@ -103,38 +117,31 @@ const Events = () => {
   };
 
   const handleJoinEvent = async (id: string) => {
-  if (!token) {
-    toast.warning("Please log in to join events.");
-    return;
-  }
-  try {
-    await eventService.join(Number(id), token);
-    toast.success("Joined event successfully!");
-    fetchEvents();
-  } catch (err) {
-    toast.error("Failed to join event.");
-  }
+    if (!token) return toast.warning("Please log in to join events.");
+    try {
+      await eventService.join(Number(id), token);
+      toast.success("Joined event successfully!");
+      fetchEvents();
+    } catch {
+      toast.error("Failed to join event.");
+    }
   };
 
-  const handleLeaveEvent = async (eventId: string) => {
-    if (!token) {
-      toast.warning("Sign in to manage your events.");
-      return;
-    }
+  const handleLeaveEvent = async (id: string) => {
+    if (!token) return toast.warning("Sign in to manage your events.");
     try {
-      await axios.post(`${API_BASE}/events/${eventId}/leave`, {}, {
+      await axios.post(`${API_URL}/events/${id}/leave`, {}, {
         headers: { Authorization: `Bearer ${token}` },
       });
       toast.info("You’ve left this event.");
       setEvents((prev) =>
         prev.map((e) =>
-          e.id === eventId
+          e.id === id
             ? { ...e, is_attending: false, attendees: Math.max(e.attendees - 1, 0) }
             : e
         )
       );
-    } catch (err) {
-      console.error(err);
+    } catch {
       toast.error("Failed to leave event.");
     }
   };
@@ -155,8 +162,8 @@ const Events = () => {
   const filterEvents = () => {
     let filtered = [...events];
     if (selectedDate) {
-      const formattedDate = format(selectedDate, "yyyy-MM-dd");
-      filtered = filtered.filter((e) => e.date.startsWith(formattedDate));
+      const formatted = format(selectedDate, "yyyy-MM-dd");
+      filtered = filtered.filter((e) => e.date.startsWith(formatted));
     }
     if (selectedCategory !== "All") {
       filtered = filtered.filter((e) => e.category === selectedCategory);
@@ -167,7 +174,6 @@ const Events = () => {
   return (
     <Layout>
       <div className="container mx-auto py-6 px-4">
-        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold mb-2">Community Events</h1>
@@ -175,6 +181,7 @@ const Events = () => {
               Discover and participate in impactful community events.
             </p>
           </div>
+
           {token && (
             <Dialog>
               <DialogTrigger asChild>
@@ -183,67 +190,47 @@ const Events = () => {
                   Create Event
                 </Button>
               </DialogTrigger>
+
               <DialogContent className="sm:max-w-[600px]">
                 <DialogHeader>
                   <DialogTitle>Create New Event</DialogTitle>
                 </DialogHeader>
+
                 <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="title">Event Title</Label>
-                    <Input
-                      id="title"
-                      value={newEvent.title}
-                      onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
-                      placeholder="Enter event title"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      value={newEvent.description}
-                      onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                      placeholder="Describe your event"
-                    />
-                  </div>
+                  <Label htmlFor="title">Event Title</Label>
+                  <Input
+                    id="title"
+                    value={newEvent.title}
+                    onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                  />
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={newEvent.description}
+                    onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                  />
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="date">Date</Label>
-                      <Input
-                        id="date"
-                        type="date"
-                        value={newEvent.date}
-                        onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="time">Time</Label>
-                      <Input
-                        id="time"
-                        type="time"
-                        value={newEvent.time}
-                        onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="location">Location</Label>
                     <Input
-                      id="location"
-                      value={newEvent.location}
-                      onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
-                      placeholder="Event location"
+                      type="date"
+                      value={newEvent.date}
+                      onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
+                    />
+                    <Input
+                      type="time"
+                      value={newEvent.time}
+                      onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
                     />
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="category">Category</Label>
-                    <Input
-                      id="category"
-                      value={newEvent.category}
-                      onChange={(e) => setNewEvent({ ...newEvent, category: e.target.value })}
-                      placeholder="Event category"
-                    />
-                  </div>
+                  <Input
+                    value={newEvent.location}
+                    onChange={(e) => setNewEvent({ ...newEvent, location: e.target.value })}
+                    placeholder="Event location"
+                  />
+                  <Input
+                    value={newEvent.category}
+                    onChange={(e) => setNewEvent({ ...newEvent, category: e.target.value })}
+                    placeholder="Event category"
+                  />
                   <Button onClick={handleCreateEvent} disabled={creating}>
                     {creating ? "Creating..." : "Create Event"}
                   </Button>
@@ -254,12 +241,10 @@ const Events = () => {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6">
-          {/* Calendar */}
           <Card className="lg:col-span-1">
             <CardHeader>
               <CardTitle className="flex items-center">
-                <CalendarDays className="h-5 w-5 mr-2" />
-                Calendar
+                <CalendarDays className="h-5 w-5 mr-2" /> Calendar
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -272,12 +257,10 @@ const Events = () => {
             </CardContent>
           </Card>
 
-          {/* Event List */}
           <div className="lg:col-span-2 space-y-6">
             <div className="flex items-center space-x-2">
               <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4 mr-2" />
-                Filter
+                <Filter className="h-4 w-4 mr-2" /> Filter
               </Button>
               <Badge variant="secondary">
                 {selectedCategory === "All" ? "All Events" : selectedCategory}
@@ -285,7 +268,9 @@ const Events = () => {
             </div>
 
             {loading ? (
-              <p className="text-muted-foreground text-center py-10">Loading events...</p>
+              <p className="text-muted-foreground text-center py-10">
+                Loading events...
+              </p>
             ) : filteredEvents.length === 0 ? (
               <p className="text-muted-foreground text-center py-10">
                 No events found for this date or filter.
@@ -302,9 +287,7 @@ const Events = () => {
                             {event.category}
                           </Badge>
                         </div>
-                        <p className="text-muted-foreground mb-3">
-                          {event.description}
-                        </p>
+                        <p className="text-muted-foreground mb-3">{event.description}</p>
                         <div className="grid sm:grid-cols-2 gap-3 text-sm mb-4">
                           <div className="flex items-center text-muted-foreground">
                             <CalendarDays className="h-4 w-4 mr-2" />
@@ -332,19 +315,14 @@ const Events = () => {
                               </AvatarFallback>
                             </Avatar>
                             <div>
-                              <p className="text-sm font-medium">
-                                {event.organizer.name}
-                              </p>
+                              <p className="text-sm font-medium">{event.organizer.name}</p>
                               <p className="text-xs text-muted-foreground">
                                 {event.organizer.role || "Organizer"}
                               </p>
                             </div>
                           </div>
                           {event.is_attending ? (
-                            <Button
-                              variant="outline"
-                              onClick={() => handleLeaveEvent(event.id)}
-                            >
+                            <Button variant="outline" onClick={() => handleLeaveEvent(event.id)}>
                               Leave Event
                             </Button>
                           ) : (

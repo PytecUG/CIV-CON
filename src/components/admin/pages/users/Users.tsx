@@ -1,5 +1,5 @@
 // src/components/admin/pages/Users.tsx
-import { useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Users as UsersIcon,
   Search,
@@ -29,15 +29,7 @@ import { MostActiveUsers } from "@/components/admin/pages/users/MostActiveUsers"
 import { TopLeadersInGroups } from "@/components/admin/pages/users/TopLeadersInGroups";
 import { MostContactedLeaders } from "@/components/admin/pages/users/MostContactedLeaders";
 
-const DISTRICTS = [
-  "Kampala", "Gulu", "Jinja", "Mbale", "Mbarara", "Arua", "Lira",
-  "Soroti", "Hoima", "Fort Portal", "Masaka", "Mukono", "Kasese",
-  "Kabale", "Moroto", "Entebbe", "Wakiso", "Nakasongola", "Luweero",
-  "Iganga", "Tororo"
-];
-const ROLES = ["Citizen", "Journalist", "Leader", "Student", "NGO", "Admin"];
-
-interface User {
+type User = {
   id: number;
   name: string;
   email: string;
@@ -46,32 +38,27 @@ interface User {
   district: string;
   status: "Active" | "Suspended" | "Pending";
   createdAt: string;
-}
-
-const generateUsers = (): User[] => {
-  const base = [
-    { id: 1, name: "John Kizza", email: "john@example.com", phone: "+256700123456", role: "Citizen", district: "Kampala", status: "Active", createdAt: "2025-01-10" },
-    { id: 2, name: "Sarah Namutebi", email: "sarah@reporter.ug", phone: "+256772345678", role: "Journalist", district: "Gulu", status: "Active", createdAt: "2025-02-15" },
-    { id: 3, name: "Hon. Moses Ali", email: "moses@parliament.go.ug", phone: "+256755987654", role: "Leader", district: "Jinja", status: "Active", createdAt: "2024-11-20" },
-    { id: 4, name: "Aisha Nansubuga", email: "aisha@mak.ac.ug", phone: "+256788112233", role: "Student", district: "Mbale", status: "Active", createdAt: "2025-03-01" },
-    { id: 5, name: "NGO Uganda", email: "info@ngo.org", phone: "+256700998877", role: "NGO", district: "Mbarara", status: "Pending", createdAt: "2025-03-20" },
-  ];
-  return Array.from({ length: 60 }, (_, i) => ({
-    ...base[i % 5],
-    id: i + 1,
-    name: `${base[i % 5].name.split(" ")[0]} ${i + 1}`,
-    email: `user${i + 1}@example.com`,
-    createdAt: new Date(2025, 0, 1 + (i % 30)).toISOString().split("T")[0],
-  }));
 };
 
-export const Users = () => {
+const DISTRICTS = [
+  "Kampala", "Gulu", "Jinja", "Mbale", "Mbarara", "Arua", "Lira",
+  "Soroti", "Hoima", "Fort Portal", "Masaka", "Mukono", "Kasese",
+  "Kabale", "Moroto", "Entebbe", "Wakiso", "Nakasongola", "Luweero",
+  "Iganga", "Tororo"
+];
+const ROLES = ["Citizen", "Journalist", "Leader", "Student", "NGO", "Admin"];
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "https://api.civ-con.org";
+
+export const Users: React.FC = () => {
   const { toast } = useToast();
-  const [users, setUsers] = useState<User[]>(generateUsers());
-  const [tab, setTab] = useState("overview");
+
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [tab, setTab] = useState<string>("overview");
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<number[]>([]);
   const [profileUser, setProfileUser] = useState<User | null>(null);
@@ -79,84 +66,143 @@ export const Users = () => {
   const [profileOpen, setProfileOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
-  // Growth chart state
   const [growthRange, setGrowthRange] = useState<"daily" | "weekly" | "monthly" | "yearly">("monthly");
 
   const perPage = 8;
 
+  // Load users
+  useEffect(() => {
+    let mounted = true;
+    const ac = new AbortController();
+    const load = async () => {
+      setLoading(true);
+      try {
+        const token = String(localStorage.getItem("token") ?? "");
+        const res = await fetch(`${API_BASE.replace(/\/$/, "")}/users`, {
+          signal: ac.signal,
+          headers: {
+            Accept: "application/json",
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+        });
+        if (!res.ok) throw new Error(`Failed to load users (${res.status})`);
+        const data = await res.json();
+        if (!mounted) return;
+        // Normalize data to User[]
+        const normalized: User[] = (data || []).map((u: any, i: number) => ({
+          id: Number(u.id ?? i + 1),
+          name: String(u.name ?? `${u.first_name ?? "User"} ${u.last_name ?? ""}`).trim(),
+          email: String(u.email ?? u.username ?? `user${i + 1}@example.com`),
+          phone: u.phone ?? "",
+          role: u.role ?? "Citizen",
+          district: u.district ?? (DISTRICTS[i % DISTRICTS.length] ?? "Kampala"),
+          status: (u.status ?? "Active") as User["status"],
+          createdAt: String(u.createdAt ?? u.created_at ?? new Date().toISOString().split("T")[0]),
+        }));
+        setUsers(normalized);
+      } catch (err: any) {
+        toast({ title: "Failed to load users", description: String(err?.message || err) });
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+    return () => { mounted = false; ac.abort(); };
+  }, [toast]);
+
+  // Filtered users
   const filtered = useMemo(() => {
     return users.filter((u) => {
-      const matchesSearch = u.name.toLowerCase().includes(search.toLowerCase()) ||
-        u.email.toLowerCase().includes(search.toLowerCase()) ||
-        (u.phone && u.phone.includes(search));
+      const q = search.toLowerCase();
+      const matchesSearch = u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || (u.phone && u.phone.includes(search));
       const matchesRole = roleFilter === "all" || u.role === roleFilter;
       const matchesStatus = statusFilter === "all" || u.status === statusFilter;
       return matchesSearch && matchesRole && matchesStatus;
     });
   }, [users, search, roleFilter, statusFilter]);
 
-  const totalPages = Math.ceil(filtered.length / perPage);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const pageUsers = filtered.slice((page - 1) * perPage, page * perPage);
 
-  // District Summary
-  const districtSummary = DISTRICTS.map(d => {
-    const inDistrict = users.filter(u => u.district === d);
-    return {
-      name: d,
-      total: inDistrict.length,
-      active: inDistrict.filter(u => u.status === "Active").length,
-      pending: inDistrict.filter(u => u.status === "Pending").length,
-      suspended: inDistrict.filter(u => u.status === "Suspended").length,
-      topRole: Object.entries(
-        inDistrict.reduce((acc, u) => ({ ...acc, [u.role]: (acc[u.role] || 0) + 1 }), {})
-      ).sort((a, b) => b[1] - a[1])[0]?.[0] || "—",
-    };
-  }).filter(d => d.total > 0);
+  // District summary
+  const districtSummary = useMemo(() => {
+    return DISTRICTS.map(d => {
+      const inDistrict = users.filter(u => u.district === d);
+      return {
+        name: d,
+        total: inDistrict.length,
+        active: inDistrict.filter(u => u.status === "Active").length,
+        pending: inDistrict.filter(u => u.status === "Pending").length,
+        suspended: inDistrict.filter(u => u.status === "Suspended").length,
+        topRole: Object.entries(
+          inDistrict.reduce((acc: Record<string, number>, u) => ({ ...acc, [u.role]: (acc[u.role] || 0) + 1 }), {})
+        ).sort((a, b) => b[1] - a[1])[0]?.[0] || "—",
+      };
+    }).filter(d => d.total > 0);
+  }, [users]);
 
-  // === USER GROWTH CHART DATA ===
+  // Growth data
   const growthData = useMemo(() => {
     const map = new Map<string, number>();
-
     users.forEach(u => {
       const d = new Date(u.createdAt);
       let key = "";
-
-      if (growthRange === "daily") {
-        key = format(d, "MMM dd");
-      } else if (growthRange === "weekly") {
+      if (growthRange === "daily") key = format(d, "MMM dd");
+      else if (growthRange === "weekly") {
         const weekStart = new Date(d);
         weekStart.setDate(d.getDate() - d.getDay());
         key = `W${format(weekStart, "w")}`;
-      } else if (growthRange === "monthly") {
-        key = format(d, "MMM yyyy");
-      } else {
-        key = format(d, "yyyy");
-      }
-
+      } else if (growthRange === "monthly") key = format(d, "MMM yyyy");
+      else key = format(d, "yyyy");
       map.set(key, (map.get(key) ?? 0) + 1);
     });
-
-    return Array.from(map.entries())
-      .map(([label, newUsers]) => ({ label, newUsers }))
-      .sort((a, b) => {
-        const da = new Date(a.label.includes("W") ? a.label.replace("W", "") : a.label);
-        const db = new Date(b.label.includes("W") ? b.label.replace("W", "") : b.label);
-        return da.getTime() - db.getTime();
-      });
+    return Array.from(map.entries()).map(([label, newUsers]) => ({ label, newUsers }));
   }, [users, growthRange]);
 
-  // === ROLE PIE CHART DATA ===
-  const rolePieData = ROLES.map(r => ({
-    name: r,
-    value: users.filter(u => u.role === r).length,
-  })).filter(d => d.value > 0);
+  // Role pie
+  const rolePieData = useMemo(() => {
+    return ROLES.map(r => ({ name: r, value: users.filter(u => u.role === r).length })).filter(d => d.value > 0);
+  }, [users]);
 
   const ROLE_COLORS = ["#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6", "#ec4899"];
 
   // Actions
-  const handleStatusToggle = (id: number) => {
+  const handleStatusToggle = async (id: number) => {
+    // optimistic update
     setUsers(prev => prev.map(u => u.id === id ? { ...u, status: u.status === "Active" ? "Suspended" : "Active" } : u));
-    toast({ title: "Status Updated" });
+    try {
+      const token = String(localStorage.getItem("token") ?? "");
+      const res = await fetch(`${API_BASE.replace(/\/$/, "")}/users/${id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: token ? `Bearer ${token}` : "" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to update (${res.status})`);
+      }
+      toast({ title: "Status Updated" });
+    } catch (err: any) {
+      toast({ title: "Failed to update status", description: String(err?.message || err), variant: "destructive" });
+      // revert
+      // reload users
+      try {
+        const token = String(localStorage.getItem("token") ?? "");
+        const r = await fetch(`${API_BASE.replace(/\/$/, "")}/users`, { headers: { Accept: "application/json", Authorization: token ? `Bearer ${token}` : "" }});
+        if (r.ok) {
+          const d = await r.json();
+          setUsers((d || []).map((u: any, i: number) => ({
+            id: Number(u.id ?? i + 1),
+            name: String(u.name ?? `${u.first_name ?? "User"}`).trim(),
+            email: String(u.email ?? `user${i + 1}@example.com`),
+            phone: u.phone ?? "",
+            role: u.role ?? "Citizen",
+            district: u.district ?? DISTRICTS[i % DISTRICTS.length],
+            status: (u.status ?? "Active") as User["status"],
+            createdAt: String(u.createdAt ?? u.created_at ?? new Date().toISOString()),
+          })));
+        }
+      } catch { /* ignore */ }
+    }
   };
 
   const handleEdit = (user: User) => {
@@ -164,22 +210,46 @@ export const Users = () => {
     setEditOpen(true);
   };
 
-  const handleSaveEdit = (updated: User) => {
-    setUsers(prev => prev.map(u => u.id === updated.id ? updated : u));
-    toast({ title: "User Updated" });
+  const handleSaveEdit = async (updated: User) => {
+    try {
+      const token = String(localStorage.getItem("token") ?? "");
+      const res = await fetch(`${API_BASE.replace(/\/$/, "")}/users/${updated.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: token ? `Bearer ${token}` : "" },
+        body: JSON.stringify(updated),
+      });
+      if (!res.ok) throw new Error(`Failed to save user (${res.status})`);
+      setUsers(prev => prev.map(u => u.id === updated.id ? updated : u));
+      toast({ title: "User Updated" });
+      setEditOpen(false);
+    } catch (err: any) {
+      toast({ title: "Failed to update user", description: String(err?.message || err), variant: "destructive" });
+    }
   };
 
-  const bulkAction = (action: "suspend" | "activate") => {
+  const bulkAction = async (action: "suspend" | "activate") => {
     const newStatus = action === "suspend" ? "Suspended" : "Active";
-    setUsers(prev => prev.map(u => selected.includes(u.id) ? { ...u, status: newStatus as any } : u));
-    toast({ title: "Bulk Update", description: `${selected.length} users ${newStatus.toLowerCase()}.` });
-    setSelected([]);
+    const token = String(localStorage.getItem("token") ?? "");
+    try {
+      const res = await fetch(`${API_BASE.replace(/\/$/, "")}/users/bulk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: token ? `Bearer ${token}` : "" },
+        body: JSON.stringify({ ids: selected, status: newStatus }),
+      });
+      if (!res.ok) throw new Error(`Bulk update failed (${res.status})`);
+      setUsers(prev => prev.map(u => selected.includes(u.id) ? { ...u, status: newStatus as User["status"] } : u));
+      toast({ title: "Bulk Update", description: `${selected.length} users ${newStatus.toLowerCase()}.` });
+      setSelected([]);
+    } catch (err: any) {
+      toast({ title: "Bulk update failed", description: String(err?.message || err), variant: "destructive" });
+    }
   };
 
   const exportCSV = () => {
+    const filteredUsers = filtered;
     const csv = [
       "ID,Name,Email,Phone,Role,District,Status,Created",
-      ...filtered.map(u => [u.id, u.name, u.email, u.phone || "", u.role, u.district, u.status, u.createdAt].join(","))
+      ...filteredUsers.map(u => [u.id, `"${u.name.replace(/"/g, '""')}"`, u.email, u.phone ?? "", u.role, u.district, u.status, u.createdAt].join(","))
     ].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -213,9 +283,8 @@ export const Users = () => {
           <TabsTrigger value="districts">Districts</TabsTrigger>
         </TabsList>
 
-        {/* === OVERVIEW TAB === */}
+        {/* Overview */}
         <TabsContent value="overview" className="space-y-6">
-          {/* Stats Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { title: "Total Users", value: users.length, icon: UsersIcon },
@@ -235,14 +304,11 @@ export const Users = () => {
             ))}
           </div>
 
-          {/* User Growth Chart */}
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>User Growth</CardTitle>
-              <Select value={growthRange} onValueChange={setGrowthRange}>
-                <SelectTrigger className="w-[130px]">
-                  <SelectValue />
-                </SelectTrigger>
+              <Select value={growthRange} onValueChange={(v: string) => setGrowthRange(v as any)}>
+                <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="daily">Daily</SelectItem>
                   <SelectItem value="weekly">Weekly</SelectItem>
@@ -256,43 +322,21 @@ export const Users = () => {
                 <LineChart data={growthData}>
                   <XAxis dataKey="label" />
                   <YAxis />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: "hsl(var(--background))", border: "1px solid hsl(var(--border))" }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="newUsers"
-                    stroke="#10b981"
-                    strokeWidth={2}
-                    dot={{ fill: "#10b981" }}
-                    name="New Users"
-                  />
+                  <Tooltip />
+                  <Line type="monotone" dataKey="newUsers" stroke="#10b981" strokeWidth={2} dot={{ fill: "#10b981" }} />
                 </LineChart>
               </ResponsiveContainer>
             </CardContent>
           </Card>
 
-          {/* Role Distribution */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
-              <CardHeader>
-                <CardTitle>Role Distribution</CardTitle>
-              </CardHeader>
+              <CardHeader><CardTitle>Role Distribution</CardTitle></CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
-                    <Pie
-                      data={rolePieData}
-                      dataKey="value"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      outerRadius={80}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    >
-                      {rolePieData.map((_, i) => (
-                        <Cell key={`cell-${i}`} fill={ROLE_COLORS[i % ROLE_COLORS.length]} />
-                      ))}
+                    <Pie data={rolePieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                      {rolePieData.map((_, i) => <Cell key={`cell-${i}`} fill={ROLE_COLORS[i % ROLE_COLORS.length]} />)}
                     </Pie>
                     <Tooltip />
                   </PieChart>
@@ -306,21 +350,21 @@ export const Users = () => {
           </div>
         </TabsContent>
 
-        {/* === ALL USERS TAB === */}
+        {/* All Users */}
         <TabsContent value="users" className="space-y-4">
           <div className="flex flex-col lg:flex-row gap-3">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="pl-10" />
             </div>
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
+            <Select value={roleFilter} onValueChange={(v: string) => setRoleFilter(v)}>
               <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Roles</SelectItem>
                 {ROLES.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <Select value={statusFilter} onValueChange={(v: string) => setStatusFilter(v)}>
               <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All</SelectItem>
@@ -334,12 +378,8 @@ export const Users = () => {
           {selected.length > 0 && (
             <div className="flex gap-2 p-3 bg-muted/50 rounded-lg">
               <span className="text-sm font-medium">{selected.length} selected</span>
-              <Button size="sm" variant="outline" onClick={() => bulkAction("suspend")}>
-                <Ban className="h-4 w-4 mr-1" /> Suspend
-              </Button>
-              <Button size="sm" variant="outline" onClick={() => bulkAction("activate")}>
-                <CheckCircle className="h-4 w-4 mr-1" /> Activate
-              </Button>
+              <Button size="sm" variant="outline" onClick={() => bulkAction("suspend")}><Ban className="h-4 w-4 mr-1" /> Suspend</Button>
+              <Button size="sm" variant="outline" onClick={() => bulkAction("activate")}><CheckCircle className="h-4 w-4 mr-1" /> Activate</Button>
             </div>
           )}
 
@@ -368,18 +408,12 @@ export const Users = () => {
                       <td className="px-4 py-3 text-sm hidden sm:table-cell"><Badge variant="outline">{u.role}</Badge></td>
                       <td className="px-4 py-3 text-sm hidden md:table-cell">{u.district}</td>
                       <td className="px-4 py-3">
-                        <Badge className={u.status === "Active" ? "bg-green-100 text-green-800" : u.status === "Suspended" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}>
-                          {u.status}
-                        </Badge>
+                        <Badge className={u.status === "Active" ? "bg-green-100 text-green-800" : u.status === "Suspended" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}>{u.status}</Badge>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" onClick={() => { setProfileUser(u); setProfileOpen(true); }}>
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" onClick={() => handleEdit(u)}>
-                            <Edit className="h-4 w-4" />
-                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => { setProfileUser(u); setProfileOpen(true); }}><Eye className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(u)}><Edit className="h-4 w-4" /></Button>
                           <Button variant="ghost" size="icon" onClick={() => handleStatusToggle(u.id)} className={u.status === "Active" ? "text-red-600" : "text-green-600"}>
                             {u.status === "Active" ? <Ban className="h-4 w-4" /> : <CheckCircle className="h-4 w-4" />}
                           </Button>
@@ -404,7 +438,7 @@ export const Users = () => {
           </div>
         </TabsContent>
 
-        {/* === ANALYTICS TAB === */}
+        {/* Analytics */}
         <TabsContent value="analytics" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <MostActiveUsers users={users.filter(u => u.status === "Active").slice(0, 5)} />
@@ -413,7 +447,7 @@ export const Users = () => {
           </div>
         </TabsContent>
 
-        {/* === DISTRICTS TAB === */}
+        {/* Districts */}
         <TabsContent value="districts" className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {districtSummary.map(d => (
@@ -440,3 +474,5 @@ export const Users = () => {
     </div>
   );
 };
+
+export default Users;

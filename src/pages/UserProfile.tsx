@@ -41,7 +41,7 @@ export default function UserProfile() {
   const [mutualInterests, setMutualInterests] = useState<string[]>([]);
   const { user: currentUser, token } = useAuth();
 
-  const API_BASE = import.meta.env.VITE_API_URL || "https://api.civ-con.org";
+  const API_URL = import.meta.env.VITE_API_BASE_URL || "https://api.civ-con.org";
 
   useEffect(() => {
     if (username) fetchUserProfile();
@@ -50,11 +50,11 @@ export default function UserProfile() {
   const fetchUserProfile = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_BASE}/users/by-username/${username}`);
+      const res = await axios.get(`${API_URL}/users/by-username/${username}`);
       const profile = res.data;
 
       if (token && currentUser) {
-        const followingRes = await axios.get(`${API_BASE}/follow/${currentUser.id}/following`);
+        const followingRes = await axios.get(`${API_URL}/follow/${currentUser.id}/following`);
         const followingIds = followingRes.data.map((f: any) => f.id);
         profile.isFollowing = followingIds.includes(profile.id);
       }

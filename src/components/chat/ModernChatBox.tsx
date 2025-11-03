@@ -53,9 +53,13 @@ interface Conversation {
   messages: Message[];
 }
 
+interface ModernChatBoxProps {
+  className?: string; // ✅ allows external styling without breaking build
+}
+
 const WS_BASE = import.meta.env.VITE_WS_URL || "wss://api.civ-con.org/ws/direct";
 
-export const ModernChatBox = () => {
+export const ModernChatBox = ({ className }: ModernChatBoxProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeView, setActiveView] = useState<"conversations" | "chat">("conversations");
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -80,18 +84,9 @@ export const ModernChatBox = () => {
 
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-
-      if (data.type === "dm") {
-        handleIncomingMessage(data);
-      }
-
-      if (data.type === "typing") {
-        handleTyping(data);
-      }
-
-      if (data.type === "seen") {
-        updateSeenStatus(data.from_user_id);
-      }
+      if (data.type === "dm") handleIncomingMessage(data);
+      if (data.type === "typing") handleTyping(data);
+      if (data.type === "seen") updateSeenStatus(data.from_user_id);
     };
 
     return () => ws.close();
@@ -118,10 +113,9 @@ export const ModernChatBox = () => {
 
     // Auto mark as read if active chat is open
     if (selectedConversation?.id === data.from_user_id.toString()) {
-      wsRef.current?.send(JSON.stringify({
-        type: "seen",
-        to_user_id: data.from_user_id,
-      }));
+      wsRef.current?.send(
+        JSON.stringify({ type: "seen", to_user_id: data.from_user_id })
+      );
     }
   };
 
@@ -175,7 +169,6 @@ export const ModernChatBox = () => {
     if (!message.trim() || !selectedConversation) return;
     const recipientId = Number(selectedConversation.id);
 
-    // Optimistic UI
     const newMsg: Message = {
       id: Date.now().toString(),
       senderId: user?.id.toString() || "",
@@ -190,23 +183,23 @@ export const ModernChatBox = () => {
       ...selectedConversation,
       messages: [...selectedConversation.messages, newMsg],
     });
-
     setMessage("");
 
     try {
       await messageService.sendMessage(recipientId, message, token!);
-      wsRef.current?.send(JSON.stringify({
-        type: "dm",
-        recipient_id: recipientId,
-        content: message,
-        sender_name: user?.first_name || "You",
-      }));
+      wsRef.current?.send(
+        JSON.stringify({
+          type: "dm",
+          recipient_id: recipientId,
+          content: message,
+          sender_name: user?.first_name || "You",
+        })
+      );
     } catch {
       toast.error("Message failed to send.");
     }
   };
 
-  // Typing indicator
   const handleTypingEvent = () => {
     if (wsRef.current && selectedConversation) {
       wsRef.current.send(
@@ -219,7 +212,6 @@ export const ModernChatBox = () => {
     }
   };
 
-  // Scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [selectedConversation?.messages]);
@@ -230,28 +222,34 @@ export const ModernChatBox = () => {
 
   const totalUnread = conversations.reduce((acc, c) => acc + (c.unreadCount || 0), 0);
 
-  // Floating Chat Button
   if (!isOpen)
     return (
-      <Button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-20 right-4 z-50 h-14 w-14 rounded-full bg-primary hover:bg-primary/90 shadow-lg md:bottom-6"
-        size="icon"
-      >
-        <div className="relative">
-          <MessageCircle className="h-6 w-6" />
-          {totalUnread > 0 && (
-            <Badge className="absolute -top-1.5 -right-1.5 h-5 w-5 p-0 text-xs flex items-center justify-center bg-destructive">
-              {totalUnread}
-            </Badge>
-          )}
-        </div>
-      </Button>
+      <div className={cn(className)}>
+        <Button
+          onClick={() => setIsOpen(true)}
+          className="fixed bottom-20 right-4 z-50 h-14 w-14 rounded-full bg-primary hover:bg-primary/90 shadow-lg md:bottom-6"
+          size="icon"
+        >
+          <div className="relative">
+            <MessageCircle className="h-6 w-6" />
+            {totalUnread > 0 && (
+              <Badge className="absolute -top-1.5 -right-1.5 h-5 w-5 p-0 text-xs flex items-center justify-center bg-destructive">
+                {totalUnread}
+              </Badge>
+            )}
+          </div>
+        </Button>
+      </div>
     );
 
   return (
-    <div className="fixed bottom-20 right-4 z-50 w-80 max-w-[calc(100vw-2rem)] bg-background border rounded-lg shadow-xl md:bottom-6 md:w-96 overflow-hidden">
-      {/* Header */}
+    <div
+      className={cn(
+        "fixed bottom-20 right-4 z-50 w-80 max-w-[calc(100vw-2rem)] bg-background border rounded-lg shadow-xl md:bottom-6 md:w-96 overflow-hidden",
+        className
+      )}
+    >
+      {/* ——— Header ——— */}
       <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-primary/5 to-accent/5">
         <div className="flex items-center space-x-2">
           {activeView === "chat" && (
@@ -265,9 +263,7 @@ export const ModernChatBox = () => {
             </Button>
           )}
           <h3 className="font-semibold text-sm">
-            {activeView === "conversations"
-              ? "Messages"
-              : selectedConversation?.name}
+            {activeView === "conversations" ? "Messages" : selectedConversation?.name}
           </h3>
           {selectedConversation?.isOnline && (
             <div className="flex items-center space-x-1">
@@ -317,7 +313,7 @@ export const ModernChatBox = () => {
         </div>
       </div>
 
-      {/* Search Bar */}
+      {/* ——— Search Bar ——— */}
       {activeView === "conversations" && (
         <div className="p-3 border-b">
           <div className="relative">
@@ -332,9 +328,8 @@ export const ModernChatBox = () => {
         </div>
       )}
 
-      {/* Content */}
+      {/* ——— Main Content ——— */}
       <ScrollArea className="h-80">
-        {/* Conversations */}
         {activeView === "conversations" && (
           <div className="p-2 space-y-1">
             {filteredConversations.map((conv) => (
@@ -355,9 +350,7 @@ export const ModernChatBox = () => {
                   <div className="flex items-center justify-between">
                     <p className="text-xs text-muted-foreground truncate">{conv.lastMessage}</p>
                     {conv.unreadCount ? (
-                      <Badge className="ml-2 h-5 w-5 p-0 text-xs bg-primary">
-                        {conv.unreadCount}
-                      </Badge>
+                      <Badge className="ml-2 h-5 w-5 p-0 text-xs bg-primary">{conv.unreadCount}</Badge>
                     ) : null}
                   </div>
                 </div>
@@ -366,7 +359,6 @@ export const ModernChatBox = () => {
           </div>
         )}
 
-        {/* Chat View */}
         {activeView === "chat" && selectedConversation && (
           <div className="p-4 space-y-4">
             {selectedConversation.messages.map((msg) => (
@@ -405,14 +397,16 @@ export const ModernChatBox = () => {
               </div>
             ))}
             {typingUser && (
-              <p className="text-xs text-muted-foreground italic">{typingUser} is typing...</p>
+              <p className="text-xs text-muted-foreground italic">
+                {typingUser} is typing...
+              </p>
             )}
             <div ref={messagesEndRef} />
           </div>
         )}
       </ScrollArea>
 
-      {/* Input */}
+      {/* ——— Message Input ——— */}
       {activeView === "chat" && (
         <div className="p-3 border-t bg-muted/20">
           <div className="flex items-center space-x-2">

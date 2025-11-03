@@ -50,12 +50,12 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <ThemeProvider defaultTheme="light" storageKey="uganda-connects-theme">
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
+    <BrowserRouter>
+      <AuthProvider>
+        <ThemeProvider defaultTheme="light" storageKey="uganda-connects-theme">
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
             <Routes>
               {/* === PUBLIC ROUTES === */}
               <Route path="/" element={<Home />} />
@@ -101,10 +101,10 @@ const App = () => (
               {/* === 404 === */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </ThemeProvider>
-    </AuthProvider>
+          </TooltipProvider>
+        </ThemeProvider>
+      </AuthProvider>
+    </BrowserRouter>
   </QueryClientProvider>
 );
 
