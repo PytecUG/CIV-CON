@@ -18,7 +18,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-
+import api from "@/lib/api";  
+import { toast } from "sonner"; 
 interface AnalyticsData {
   userGrowth: { value: number; change: number };
   engagementRate: { value: string; change: number };
@@ -36,46 +37,39 @@ export const Analytics = () => {
     postAnalytics: [],
   });
 
-  // Placeholder API fetch
+  const [loading, setLoading] = useState(true);
+
+  // ✅ Fetch real analytics data from backend
   useEffect(() => {
     const fetchAnalytics = async () => {
-      const data: AnalyticsData = {
-        userGrowth: { value: 1234, change: 12 }, // +12%
-        engagementRate: { value: "85%", change: 5 }, // +5%
-        postCategories: [
-          { name: "Community", count: 500 },
-          { name: "Education", count: 300 },
-          { name: "Health", count: 200 },
-          { name: "Governance", count: 150 },
-        ],
-        topDistricts: [
-          { name: "Kampala", users: 400 },
-          { name: "Gulu", users: 250 },
-          { name: "Jinja", users: 200 },
-          { name: "Mbale", users: 150 },
-        ],
-        postAnalytics: [
-          { topic: "Community Development", role: "Citizen", posts: 120, engagement: 80 },
-          { topic: "Education Reform", role: "Journalist", posts: 95, engagement: 70 },
-          { topic: "Health Awareness", role: "Leader", posts: 80, engagement: 65 },
-          { topic: "Local Governance", role: "Student", posts: 65, engagement: 50 },
-          { topic: "Economic Growth", role: "Citizen", posts: 50, engagement: 40 },
-        ],
-      };
-      setAnalytics(data);
+      try {
+        const { data } = await api.get("/admin/analytics");
+        setAnalytics(data);
+      } catch (error: any) {
+        console.error("Failed to load analytics:", error);
+        toast.error("Failed to fetch analytics data. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
     };
     fetchAnalytics();
   }, []);
 
   const getIndicator = (change: number) => {
-    if (change > 0) {
-      return <ArrowUp className="h-4 w-4 text-yellow-500" />;
-    } else if (change < 0) {
-      return <ArrowDown className="h-4 w-4 text-red-500" />;
-    } else {
-      return <Minus className="h-4 w-4 text-blue-500" />;
-    }
+    if (change > 0) return <ArrowUp className="h-4 w-4 text-green-500" />;
+    if (change < 0) return <ArrowDown className="h-4 w-4 text-red-500" />;
+    return <Minus className="h-4 w-4 text-blue-500" />;
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[70vh] text-muted-foreground">
+        <div className="animate-pulse text-sm sm:text-base">
+          Loading analytics data...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container py-4 xs:py-6 sm:py-8">
@@ -86,8 +80,9 @@ export const Analytics = () => {
         Detailed insights into user engagement, content trends, and regional activity.
       </p>
 
-      {/* Analytics Cards */}
+      {/* === Analytics Summary Cards === */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 xs:gap-6 mb-6 xs:mb-8">
+        {/* User Growth */}
         <Card className="shadow-soft hover:scale-105 transition-all duration-300 bg-gradient-to-br from-primary/10 to-background rounded-lg">
           <CardHeader className="flex items-center space-x-2">
             <Users className="h-5 w-5 text-primary" />
@@ -96,17 +91,13 @@ export const Analytics = () => {
           <CardContent>
             <p className="text-lg xs:text-xl font-bold">{analytics.userGrowth.value}</p>
             <p className="text-xs xs:text-sm text-muted-foreground flex items-center">
-              {getIndicator(analytics.userGrowth.change)} {Math.abs(analytics.userGrowth.change)}% this month
+              {getIndicator(analytics.userGrowth.change)}{" "}
+              {Math.abs(analytics.userGrowth.change)}% this month
             </p>
-            <div className="mt-2 h-2 bg-muted rounded-full">
-              <div
-                className="h-full bg-primary rounded-full"
-                style={{ width: `${(analytics.userGrowth.value / 1500) * 100}%` }}
-              />
-            </div>
           </CardContent>
         </Card>
 
+        {/* Engagement Rate */}
         <Card className="shadow-soft hover:scale-105 transition-all duration-300 bg-gradient-to-br from-primary/10 to-background rounded-lg">
           <CardHeader className="flex items-center space-x-2">
             <TrendingUp className="h-5 w-5 text-primary" />
@@ -115,17 +106,13 @@ export const Analytics = () => {
           <CardContent>
             <p className="text-lg xs:text-xl font-bold">{analytics.engagementRate.value}</p>
             <p className="text-xs xs:text-sm text-muted-foreground flex items-center">
-              {getIndicator(analytics.engagementRate.change)} {Math.abs(analytics.engagementRate.change)}% this month
+              {getIndicator(analytics.engagementRate.change)}{" "}
+              {Math.abs(analytics.engagementRate.change)}% this month
             </p>
-            <div className="mt-2 h-2 bg-muted rounded-full">
-              <div
-                className="h-full bg-primary rounded-full"
-                style={{ width: `${parseFloat(analytics.engagementRate.value)}%` }}
-              />
-            </div>
           </CardContent>
         </Card>
 
+        {/* Post Categories */}
         <Card className="shadow-soft hover:scale-105 transition-all duration-300 bg-gradient-to-br from-primary/10 to-background rounded-lg">
           <CardHeader className="flex items-center space-x-2">
             <MessageSquare className="h-5 w-5 text-primary" />
@@ -134,15 +121,19 @@ export const Analytics = () => {
           <CardContent>
             <div className="space-y-2">
               {analytics.postCategories.map((category) => (
-                <div key={category.name} className="flex items-center justify-between">
-                  <p className="text-xs xs:text-sm">{category.name}</p>
-                  <p className="text-xs xs:text-sm font-semibold">{category.count}</p>
+                <div
+                  key={category.name}
+                  className="flex items-center justify-between text-xs xs:text-sm"
+                >
+                  <p>{category.name}</p>
+                  <p className="font-semibold">{category.count}</p>
                 </div>
               ))}
             </div>
           </CardContent>
         </Card>
 
+        {/* Top Districts */}
         <Card className="shadow-soft hover:scale-105 transition-all duration-300 bg-gradient-to-br from-primary/10 to-background rounded-lg">
           <CardHeader className="flex items-center space-x-2">
             <MapPin className="h-5 w-5 text-primary" />
@@ -151,9 +142,12 @@ export const Analytics = () => {
           <CardContent>
             <div className="space-y-2">
               {analytics.topDistricts.map((district) => (
-                <div key={district.name} className="flex items-center justify-between">
-                  <p className="text-xs xs:text-sm">{district.name}</p>
-                  <p className="text-xs xs:text-sm font-semibold">{district.users} users</p>
+                <div
+                  key={district.name}
+                  className="flex items-center justify-between text-xs xs:text-sm"
+                >
+                  <p>{district.name}</p>
+                  <p className="font-semibold">{district.users} users</p>
                 </div>
               ))}
             </div>
@@ -161,7 +155,7 @@ export const Analytics = () => {
         </Card>
       </div>
 
-      {/* Post Analytics Table */}
+      {/* === Post Analytics Table === */}
       <Card className="shadow-soft rounded-lg">
         <CardHeader className="flex items-center space-x-2">
           <MessageSquare className="h-5 w-5 text-primary" />
@@ -181,8 +175,11 @@ export const Analytics = () => {
               <TableBody>
                 {analytics.postAnalytics.map((item, index) => (
                   <TableRow
-                    key={`${item.topic}-${item.role}`}
-                    className={cn("transition-colors", index % 2 === 0 ? "bg-background" : "bg-muted/20")}
+                    key={`${item.topic}-${item.role}-${index}`}
+                    className={cn(
+                      "transition-colors",
+                      index % 2 === 0 ? "bg-background" : "bg-muted/20"
+                    )}
                   >
                     <TableCell className="text-xs sm:text-sm font-medium">{item.topic}</TableCell>
                     <TableCell className="text-xs sm:text-sm">{item.role}</TableCell>

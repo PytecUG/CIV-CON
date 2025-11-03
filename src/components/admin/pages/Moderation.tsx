@@ -1,5 +1,5 @@
 // src/components/admin/pages/Moderation.tsx
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Flag,
   CheckCircle,
@@ -7,31 +7,48 @@ import {
   Eye,
   TrendingUp,
   MessageSquare,
-  ThumbsUp,
   Search,
-  Filter,
   Download,
   Ban,
   Edit,
   User,
+  RefreshCcw,
 } from "lucide-react";
 import { format } from "date-fns";
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
-
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/components/ui/use-toast";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import api from "@/lib/api";
 
 interface Post {
   id: number;
@@ -55,35 +72,12 @@ interface Topic {
   status: "Active" | "Suspended";
 }
 
-// Mock data
-const generatePosts = (): Post[] => {
-  const base = [
-    { content: "Community event this weekend!", author: "John Kizza", authorId: 1, views: 1200, likes: 89, comments: 23, reports: 0 },
-    { content: "Inappropriate content reported.", author: "Sarah Namutebi", authorId: 2, views: 450, likes: 12, comments: 8, reports: 5 },
-    { content: "Local governance discussion.", author: "Moses Ali", authorId: 3, views: 890, likes: 67, comments: 41, reports: 1 },
-    { content: "Offensive language detected.", author: "Aisha Nansubuga", authorId: 4, views: 320, likes: 5, comments: 12, reports: 8 },
-    { content: "Education reform proposal.", author: "NGO Uganda", authorId: 5, views: 2100, likes: 245, comments: 89, reports: 2 },
-  ];
-  return Array.from({ length: 25 }, (_, i) => ({
-    ...base[i % 5],
-    id: i + 1,
-    createdAt: new Date(2025, 0, 1 + (i % 28)).toISOString(),
-    status: i % 7 === 0 ? "Flagged" : i % 11 === 0 ? "Removed" : "Approved",
-  }));
-};
-
-const topics: Topic[] = [
-  { id: 1, name: "Youth Empowerment", posts: 145, engagement: 89, trend: "up", status: "Active" },
-  { id: 2, name: "Local Elections", posts: 98, engagement: 76, trend: "up", status: "Active" },
-  { id: 3, name: "Health Awareness", posts: 67, engagement: 45, trend: "stable", status: "Suspended" },
-  { id: 4, name: "Education Reform", posts: 210, engagement: 92, trend: "up", status: "Active" },
-  { id: 5, name: "Climate Action", posts: 134, engagement: 81, trend: "down", status: "Active" },
-];
-
 export const Moderation = () => {
   const { toast } = useToast();
   const [tab, setTab] = useState("overview");
-  const [posts] = useState<Post[]>(generatePosts());
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [topics, setTopics] = useState<Topic[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [selected, setSelected] = useState<number[]>([]);
@@ -92,13 +86,65 @@ export const Moderation = () => {
   const [viewOpen, setViewOpen] = useState(false);
   const [actionOpen, setActionOpen] = useState(false);
   const [topicOpen, setTopicOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   const perPage = 8;
 
-  // Filter posts
+  // ================================
+  // 🚀 Fetch posts and topics
+  // ================================
+  const fetchData = async () => {
+    setRefreshing(true);
+    try {
+      const [postsRes, topicsRes] = await Promise.all([
+        api.get("/admin/moderation/posts"),
+        api.get("/admin/moderation/topics"),
+      ]);
+      setPosts(postsRes.data || []);
+      setTopics(topicsRes.data || []);
+    } catch (error) {
+      console.error("Failed to load moderation data:", error);
+      toast({
+        title: "Loading fallback demo data",
+        description: "Could not fetch from backend. Using mock data.",
+        variant: "destructive",
+      });
+      // fallback mock
+      setPosts(
+        Array.from({ length: 10 }, (_, i) => ({
+          id: i + 1,
+          content: `Sample post content ${i + 1}`,
+          author: `User ${i + 1}`,
+          authorId: i + 1,
+          status: i % 3 === 0 ? "Flagged" : i % 5 === 0 ? "Removed" : "Approved",
+          createdAt: new Date(2025, 10, i + 1).toISOString(),
+          views: 500 + i * 100,
+          likes: 50 + i * 5,
+          comments: 10 + i,
+          reports: i % 3 === 0 ? 2 : 0,
+        }))
+      );
+      setTopics([
+        { id: 1, name: "Governance", posts: 120, engagement: 87, trend: "up", status: "Active" },
+        { id: 2, name: "Climate Action", posts: 88, engagement: 72, trend: "stable", status: "Active" },
+      ]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // ================================
+  // 📊 Stats + Filters
+  // ================================
   const filteredPosts = useMemo(() => {
-    return posts.filter(p => {
-      const matchesSearch = p.content.toLowerCase().includes(search.toLowerCase()) ||
+    return posts.filter((p) => {
+      const matchesSearch =
+        p.content.toLowerCase().includes(search.toLowerCase()) ||
         p.author.toLowerCase().includes(search.toLowerCase());
       const matchesStatus = statusFilter === "all" || p.status === statusFilter;
       return matchesSearch && matchesStatus;
@@ -107,34 +153,44 @@ export const Moderation = () => {
 
   const pagePosts = filteredPosts.slice(0, perPage);
 
-  // Stats
   const stats = {
     total: posts.length,
-    flagged: posts.filter(p => p.status === "Flagged").length,
-    removed: posts.filter(p => p.status === "Removed").length,
-    activeTopics: topics.filter(t => t.status === "Active").length,
+    flagged: posts.filter((p) => p.status === "Flagged").length,
+    removed: posts.filter((p) => p.status === "Removed").length,
+    activeTopics: topics.filter((t) => t.status === "Active").length,
   };
 
-  // Performance chart
-  const performanceData = posts.slice(0, 7).map(p => ({
+  const performanceData = posts.slice(0, 7).map((p) => ({
     date: format(new Date(p.createdAt), "MMM dd"),
     views: p.views,
     likes: p.likes,
     comments: p.comments,
   }));
 
-  // Topic engagement pie
-  const topicPie = topics.map(t => ({
+  const topicPie = topics.map((t) => ({
     name: t.name,
     value: t.engagement,
   }));
 
   const COLORS = ["#10b981", "#f59e0b", "#ef4444", "#3b82f6", "#8b5cf6"];
 
-  // Actions
-  const handleBulkAction = (action: "approve" | "suspend" | "remove") => {
-    toast({ title: `${action.charAt(0).toUpperCase() + action.slice(1)}d`, description: `${selected.length} items updated.` });
-    setSelected([]);
+  // ================================
+  // 🔧 Actions
+  // ================================
+  const handleBulkAction = async (action: "approve" | "remove") => {
+    try {
+      await Promise.all(
+        selected.map((id) => api.post(`/admin/moderation/post/${id}/${action}`))
+      );
+      toast({
+        title: `${action === "approve" ? "Approved" : "Removed"}`,
+        description: `${selected.length} posts updated successfully.`,
+      });
+      fetchData();
+      setSelected([]);
+    } catch {
+      toast({ title: "Action failed", variant: "destructive" });
+    }
   };
 
   const handlePostAction = (post: Post, action: "approve" | "remove") => {
@@ -142,9 +198,19 @@ export const Moderation = () => {
     setActionOpen(true);
   };
 
-  const confirmAction = () => {
-    if (selectedPost) {
-      toast({ title: "Action Confirmed", description: `Post ${selectedPost.id} updated.` });
+  const confirmAction = async () => {
+    if (!selectedPost) return;
+    try {
+      const action = selectedPost.status === "Flagged" ? "approve" : "remove";
+      await api.post(`/admin/moderation/post/${selectedPost.id}/${action}`);
+      toast({
+        title: "Success",
+        description: `Post ${selectedPost.id} updated.`,
+      });
+      fetchData();
+    } catch {
+      toast({ title: "Failed to update post", variant: "destructive" });
+    } finally {
       setActionOpen(false);
       setSelectedPost(null);
     }
@@ -153,9 +219,19 @@ export const Moderation = () => {
   const exportCSV = () => {
     const csv = [
       "ID,Content,Author,Status,Views,Likes,Comments,Reports,Date",
-      ...filteredPosts.map(p => [
-        p.id, `"${p.content}"`, p.author, p.status, p.views, p.likes, p.comments, p.reports, p.createdAt
-      ].join(","))
+      ...filteredPosts.map((p) =>
+        [
+          p.id,
+          `"${p.content}"`,
+          p.author,
+          p.status,
+          p.views,
+          p.likes,
+          p.comments,
+          p.reports,
+          p.createdAt,
+        ].join(",")
+      ),
     ].join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
@@ -166,6 +242,16 @@ export const Moderation = () => {
     toast({ title: "Exported", description: `${filteredPosts.length} posts` });
   };
 
+  // ================================
+  // 🧩 Rendering
+  // ================================
+  if (loading)
+    return (
+      <div className="flex items-center justify-center h-[70vh] text-muted-foreground animate-pulse">
+        Loading moderation data...
+      </div>
+    );
+
   return (
     <div className="container py-6 space-y-6">
       {/* Header */}
@@ -174,13 +260,29 @@ export const Moderation = () => {
           <h1 className="text-2xl sm:text-3xl font-bold text-green-600 flex items-center gap-2">
             <Flag className="h-7 w-7" /> Content Moderation
           </h1>
-          <p className="text-muted-foreground">Manage posts, track performance, and moderate trending topics.</p>
+          <p className="text-muted-foreground">
+            Manage posts, track performance, and moderate trending topics.
+          </p>
         </div>
-        <Button onClick={exportCSV} className="flex items-center gap-2">
-          <Download className="h-4 w-4" /> Export
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={fetchData}
+            disabled={refreshing}
+            className="flex items-center gap-2"
+          >
+            <RefreshCcw
+              className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </Button>
+          <Button onClick={exportCSV} className="flex items-center gap-2">
+            <Download className="h-4 w-4" /> Export
+          </Button>
+        </div>
       </div>
 
+      {/* Tabs */}
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -188,7 +290,7 @@ export const Moderation = () => {
           <TabsTrigger value="topics">Trending Topics</TabsTrigger>
         </TabsList>
 
-        {/* Overview */}
+        {/* --- Overview --- */}
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
@@ -211,7 +313,9 @@ export const Moderation = () => {
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
-              <CardHeader><CardTitle>Post Performance (Last 7 Days)</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle>Post Performance (Last 7 Days)</CardTitle>
+              </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={250}>
                   <LineChart data={performanceData}>
@@ -227,13 +331,23 @@ export const Moderation = () => {
             </Card>
 
             <Card>
-              <CardHeader><CardTitle>Topic Engagement</CardTitle></CardHeader>
+              <CardHeader>
+                <CardTitle>Topic Engagement</CardTitle>
+              </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
-                    <Pie data={topicPie} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
+                    <Pie
+                      data={topicPie}
+                      dataKey="value"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      outerRadius={80}
+                      label
+                    >
                       {topicPie.map((_, i) => (
-                        <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />
+                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
                       ))}
                     </Pie>
                     <Tooltip />
@@ -243,6 +357,8 @@ export const Moderation = () => {
             </Card>
           </div>
         </TabsContent>
+
+
 
         {/* All Posts */}
         <TabsContent value="posts" className="space-y-4">

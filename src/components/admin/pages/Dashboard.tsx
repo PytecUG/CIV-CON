@@ -12,7 +12,6 @@ import {
   DollarSign,
   CreditCard,
   TrendingUp,
-  BarChart3,
 } from "lucide-react";
 import {
   Card,
@@ -20,14 +19,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   ResponsiveContainer,
   LineChart,
@@ -41,6 +32,8 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import api from "@/lib/api";
+import { toast } from "sonner";
 
 interface AnalyticsData {
   totalLeaders: { value: number; change: number };
@@ -59,7 +52,6 @@ interface AnalyticsData {
 }
 
 export const Dashboard = () => {
-  // 🔹 Analytics data
   const [analytics, setAnalytics] = useState<AnalyticsData>({
     totalLeaders: { value: 0, change: 0 },
     totalJournalists: { value: 0, change: 0 },
@@ -76,35 +68,48 @@ export const Dashboard = () => {
     subscriptionPlans: [],
   });
 
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
     const fetchAnalytics = async () => {
-      const data: AnalyticsData = {
-        totalLeaders: { value: 150, change: 5 },
-        totalJournalists: { value: 80, change: 0 },
-        totalCitizens: { value: 1200, change: 10 },
-        totalDistricts: { value: 15, change: -2 },
-        postsToday: { value: 245, change: 15 },
-        articlesToday: { value: 32, change: 8 },
-        activeUsers: { value: 850, change: 12 },
-        activeDistricts: { value: 12, change: -5 },
-        totalGroups: { value: 45, change: 3 },
-        trendingTopics: [
-          { name: "Community Development", posts: 120 },
-          { name: "Education Reform", posts: 95 },
-          { name: "Health Awareness", posts: 80 },
-          { name: "Local Governance", posts: 65 },
-          { name: "Economic Growth", posts: 50 },
-        ],
-        totalSubscriptions: { value: 230, change: 8 },
-        revenueGenerated: { value: 1250000, change: 12 }, // In UGX
-        subscriptionPlans: [
-          { plan: "Basic Leader", subscribers: 120, revenue: 600000 },
-          { plan: "Premium Leader", subscribers: 80, revenue: 480000 },
-          { plan: "Enterprise", subscribers: 30, revenue: 170000 },
-        ],
-      };
-      setAnalytics(data);
+      try {
+        const { data } = await api.get("/admin/dashboard");
+        setAnalytics(data);
+      } catch (error) {
+        console.error("Failed to load dashboard analytics:", error);
+        toast.error("Unable to load dashboard data. Using fallback.");
+
+        // fallback mock data
+        setAnalytics({
+          totalLeaders: { value: 150, change: 5 },
+          totalJournalists: { value: 80, change: 0 },
+          totalCitizens: { value: 1200, change: 10 },
+          totalDistricts: { value: 15, change: -2 },
+          postsToday: { value: 245, change: 15 },
+          articlesToday: { value: 32, change: 8 },
+          activeUsers: { value: 850, change: 12 },
+          activeDistricts: { value: 12, change: -5 },
+          totalGroups: { value: 45, change: 3 },
+          trendingTopics: [
+            { name: "Community Development", posts: 120 },
+            { name: "Education Reform", posts: 95 },
+            { name: "Health Awareness", posts: 80 },
+            { name: "Local Governance", posts: 65 },
+            { name: "Economic Growth", posts: 50 },
+          ],
+          totalSubscriptions: { value: 230, change: 8 },
+          revenueGenerated: { value: 1250000, change: 12 },
+          subscriptionPlans: [
+            { plan: "Basic Leader", subscribers: 120, revenue: 600000 },
+            { plan: "Premium Leader", subscribers: 80, revenue: 480000 },
+            { plan: "Enterprise", subscribers: 30, revenue: 170000 },
+          ],
+        });
+      } finally {
+        setLoading(false);
+      }
     };
+
     fetchAnalytics();
   }, []);
 
@@ -116,7 +121,6 @@ export const Dashboard = () => {
     return <Minus className="h-4 w-4 text-blue-500" />;
   };
 
-  // 🔹 Chart Data
   const [postGrowth] = useState([
     { name: "Jan", posts: 15 },
     { name: "Feb", posts: 25 },
@@ -176,6 +180,16 @@ export const Dashboard = () => {
 
   const COLORS = ["#10b981", "#059669", "#047857", "#065f46"];
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[70vh] text-muted-foreground">
+        <div className="animate-pulse text-sm sm:text-base">
+          Loading dashboard data...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container py-6 space-y-6 min-h-screen">
       <h1 className="text-2xl sm:text-3xl font-bold text-primary">
@@ -184,6 +198,8 @@ export const Dashboard = () => {
       <p className="text-muted-foreground">
         Real-time insights into platform performance, engagement, and revenue for Uganda's civic platform.
       </p>
+
+
 
       {/* 🔹 Analytics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
